@@ -1,4 +1,4 @@
-# V0.1 CONTRACT
+# V0.1
 
 ## INPUT
 
@@ -13,7 +13,7 @@ MergeRadar accepts a local git repo and one of these inputs:
 - Explicit diff file
   - parse a unified diff from disk
 
-### CLI contract
+Examples:
 
 ```sh
 mergeradar analyze
@@ -87,7 +87,7 @@ JSON should include:
 - recommendations
 - missing_evidence
 
-## Non-goal
+## NON-GOAL
 
 v0.1 is not:
 
@@ -97,4 +97,148 @@ v0.1 is not:
 - a hosted SaaS
 - a GitHub App
 
-It is a change-risk summarizer.
+## SCORING
+
+Deterministic scoring (no LLM)
+
+Risk levels:
+
+- Low: score 0–2
+- Medium: score 3–5
+- High: score 6+
+
+Initial rules:
+
+- Each rule adds points.
+
+High-signal rules:
+
+- migration changed: +3
+- auth/security-sensitive path changed: +3
+- infra/deploy config changed: +2
+- public API route/schema changed: +2
+- env/config changed: +2
+
+Evidence gap rules:
+
+- risky code changed but no tests changed: +2
+- risky code changed but no docs changed: +1
+- large diff size threshold exceeded: +1
+- multiple top-level components touched: +2
+
+Stability helpers:
+
+- only docs changed: -2
+- only tests changed: -1
+
+## RULES
+
+Each rule must have:
+
+- id
+- name
+- description
+- severity_weight
+- match(context) -> bool
+- explanation(context) -> str
+
+Example rule IDs:
+
+- db.migration_changed
+- auth.path_touched
+- infra.config_changed
+- evidence.no_tests_for_risky_change
+- scope.multiple_components_changed
+
+## REPOSITORY ANALYSIS
+
+MergeRadar should build a small internal model from the diff (not building AST analysis in v0.1, path-based heuristics are enough):
+
+Diff summary model
+
+- changed files
+- added/deleted lines
+- renamed files
+- top-level directories touched
+- file categories touched
+
+Repo context model
+
+- test files present?
+- docs folder present?
+- migration folders present?
+- infra folders present?
+- ownership files present? (CODEOWNERS, runbooks maybe later)
+
+## RECOMMENDATIONS
+
+Recommendations should be deterministic and tied to triggered rules (no fluffy advice):
+
+Examples:
+
+- migration changed
+  - "Validate migration on a staging snapshot before deploy."
+- auth path changed
+  - "Verify login, token/session validation, and permission boundaries."
+- infra/config changed
+  - "Confirm environment variable compatibility and deployment configuration."
+- no tests for risky change
+  - "Add or run targeted tests covering changed auth/config/migration paths."
+
+## SUCCESS CRITERIA
+
+MergeRadar v0.1 is done when:
+
+- It runs against a local repo without crashing on normal diffs
+- It classifies changed files into useful categories
+- It computes a deterministic risk score
+- It outputs a markdown report that feels credible
+- It outputs JSON for automation
+- It has at least 5-8 tests covering core rules and parsing
+- It works on at least 2 real example repos or sample diffs
+
+## CLI
+
+Core command
+
+```sh
+mergeradar analyze
+```
+
+Options
+
+```sh
+mergeradar analyze --base main --head HEAD
+mergeradar analyze --diff-file ./samples/auth-change.diff
+mergeradar analyze --repo .
+mergeradar analyze --output report.md
+mergeradar analyze --format markdown
+mergeradar analyze --format json
+mergeradar analyze --verbose
+```
+
+Exit codes
+
+- 0 success
+- 1 runtime or parsing error
+- 2 invalid arguments
+- 3 not a git repo / diff unavailable
+
+## BACKLOG
+
+### v0.2
+
+- GitHub Action
+- PR comment output
+- CODEOWNERS awareness
+- better component inference
+
+### v0.3
+
+- LLM-generated narrative summary on top of deterministic rules
+- custom rules config
+- ignore patterns
+
+### NEEDS TO BE PRIORITIZED
+
+- GitHub Action
