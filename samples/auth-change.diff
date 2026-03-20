@@ -1,0 +1,23 @@
+diff --git a/app/auth/service.py b/app/auth/service.py
+index 1111111..2222222 100644
+--- a/app/auth/service.py
++++ b/app/auth/service.py
+@@ -1,4 +1,8 @@
+-def login(user, password):
+-    return validate(user, password)
++def login(user, password, ip_address=None):
++    audit_login_attempt(user, ip_address)
++    result = validate(user, password)
++    refresh_session(result)
++    return result
+ 
+diff --git a/.github/workflows/deploy.yml b/.github/workflows/deploy.yml
+index 1111111..2222222 100644
+--- a/.github/workflows/deploy.yml
++++ b/.github/workflows/deploy.yml
+@@ -2,3 +2,5 @@
+ jobs:
+   deploy:
+     runs-on: ubuntu-latest
++    env:
++      APP_ENV: production
