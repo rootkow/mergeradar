@@ -12,13 +12,13 @@ markdown or JSON report describing:
 
 ## Why this exists
 
-Most PR tooling focuses on code review comments. MergeRadar focuses on a different
-question:
+Most pull request tools are built to help reviewers comment on code changes.
+MergeRadar is built to answer a different question:
 
-> What could this change impact, and what should we verify before it ships?
+> What could this change affect, and what should we verify before it ships?
 
-The first version is deterministic and rule-based on purpose. That makes it easier
-to trust, easier to test, and easier to evolve.
+The first version is intentionally deterministic and rule-based. That keeps the
+output easier to inspect, easier to test, and easier to extend as the rules improve.
 
 ## Install
 
