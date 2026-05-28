@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import typer
@@ -15,7 +16,6 @@ from mergeradar.git.diff_loader import (
     load_changed_files_from_diff_file,
 )
 from mergeradar.git.repo_inspector import is_git_repo
-from mergeradar.renderers.json import render_json
 from mergeradar.renderers.markdown import render_markdown
 
 app = typer.Typer(help="Blast-radius and risk analysis for pull requests.")
@@ -58,7 +58,11 @@ def analyze(
             console.print("[red]Unsupported format. Use 'markdown' or 'json'.[/red]")
             raise typer.Exit(code=2)
 
-        rendered = render_markdown(report) if output_format == "markdown" else render_json(report)
+        rendered = (
+            render_markdown(report)
+            if output_format == "markdown"
+            else json.dumps(report.to_dict(), indent=2, sort_keys=True)
+        )
 
         if output is not None:
             output.write_text(rendered, encoding="utf-8")
