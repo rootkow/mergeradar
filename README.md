@@ -1,112 +1,222 @@
 # MergeRadar
 
-**Blast-radius and risk analysis for pull requests.**
+**Deterministic blast-radius and risk analysis for pull requests.**
 
-MergeRadar analyzes a local git diff or a saved unified diff file and produces a
-markdown or JSON report describing:
+MergeRadar analyzes a local Git diff or a saved unified diff and produces a
+Markdown or JSON report describing:
 
-- what areas of the codebase were touched
+- which areas of the codebase changed
 - which risk signals were triggered
-- what evidence is missing
-- what should be checked before merge or deploy
+- what supporting evidence is missing
+- what should be checked before merge or deployment
 
-## Why this exists
+MergeRadar is intentionally rule-based. Its output is inspectable and
+repeatable across local reviews.
 
-Most pull request tools are built to help reviewers comment on code changes.
-MergeRadar is built to answer a different question:
+## Requirements
 
-> What could this change affect, and what should we verify before it ships?
-
-The first version is intentionally deterministic and rule-based. That keeps the
-output easier to inspect, easier to test, and easier to extend as the rules improve.
+- Python 3.11 or newer
+- Git, when analyzing a local repository
 
 ## Install
 
+Clone the repository, create a virtual environment, and install MergeRadar with
+its development dependencies:
+
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -e .[dev]
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
 ```
 
-## Usage
+On Windows PowerShell, activate the environment with:
 
-Analyze the current working tree against `HEAD`:
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Confirm that the CLI is available:
+
+```bash
+mergeradar --help
+```
+
+You can also run the CLI without the installed console script:
+
+```bash
+python -m mergeradar --help
+```
+
+## Quick Start
+
+Analyze staged and unstaged changes in the current repository against `HEAD`:
 
 ```bash
 mergeradar analyze
 ```
 
-Analyze a branch or commit range:
+Analyze changes in another local repository:
 
 ```bash
-mergeradar analyze --base main --head HEAD
+mergeradar analyze --repo ../another-project
 ```
 
-Analyze a saved diff file:
+Analyze the changes introduced since a branch diverged from `main`:
+
+```bash
+mergeradar analyze --base main
+```
+
+Compare two explicit refs:
+
+```bash
+mergeradar analyze --base main --head feature/my-change
+```
+
+Analyze a saved unified diff:
 
 ```bash
 mergeradar analyze --diff-file samples/auth-change.diff
 ```
 
-Write the report to disk:
+Write a Markdown report to disk:
 
 ```bash
 mergeradar analyze --output report.md
 ```
 
-Get JSON for automation:
+Write a structured JSON report:
 
 ```bash
-mergeradar analyze --format json
+mergeradar analyze --format json --output report.json
 ```
 
-## Sample output
+Add the resolved repository, file count, categories, and components to the
+terminal output:
+
+```bash
+mergeradar analyze --verbose
+```
+
+## Comparison Behavior
+
+When no refs are supplied, MergeRadar runs the equivalent of `git diff HEAD`,
+which includes staged and unstaged tracked changes but not untracked files.
+
+Ref comparisons use Git's three-dot syntax:
+
+| Options | Comparison |
+| --- | --- |
+| no `--base` or `--head` | `HEAD` versus the current working tree |
+| `--base BASE` | `BASE...HEAD` |
+| `--base BASE --head HEAD` | `BASE...HEAD` |
+
+`--diff-file` reads the supplied unified diff instead of inspecting a
+repository. Reports are always printed to the terminal; `--output` writes the
+same report to a file as well.
+
+## How Analysis Works
+
+MergeRadar:
+
+1. Loads changed file paths, statuses, additions, and deletions.
+2. Classifies each path as application code, authentication, API, database,
+   infrastructure, configuration, tests, documentation, or unknown.
+3. Builds context about the categories, top-level components, and total churn.
+4. Evaluates deterministic risk and stabilizer rules.
+5. Renders the resulting score, evidence gaps, recommendations, and changed
+   files as Markdown or JSON.
+
+Risk levels are derived from the final score:
+
+| Score | Risk level |
+| --- | --- |
+| 0-2 | Low |
+| 3-5 | Medium |
+| 6 or higher | High |
+
+Negative stabilizer scores cannot reduce the final score below zero.
+
+## Current Rules
+
+| Signal | Score | Trigger |
+| --- | ---: | --- |
+| Database migration changed | +3 | A migration, Alembic, or schema path changed |
+| Auth-sensitive code changed | +3 | Auth, session, permission, OAuth, JWT, RBAC, or login code changed |
+| Infrastructure or deployment config changed | +2 | Deployment, Docker, Terraform, Helm, Kubernetes, or workflow paths changed |
+| Public API surface may have changed | +2 | API, route, endpoint, handler, OpenAPI, or Swagger code changed |
+| Environment or app configuration changed | +2 | A recognized configuration file or path changed |
+| No tests changed for risky areas | +2 | A risky category changed without a test-file change |
+| No docs changed for risky areas | +1 | A risky category changed without a documentation change |
+| Large diff size threshold exceeded | +1 | At least 400 changed lines or 15 changed files |
+| Multiple top-level components changed | +2 | At least three top-level paths changed |
+| Docs-only change | -2 | Every changed file is documentation |
+| Tests-only change | -1 | Every changed file is a test |
+
+Path classification is heuristic and case-insensitive. Rules inspect filenames,
+extensions, and path segments; they do not parse source code.
+
+## Sample Output
+
+Running:
+
+```bash
+mergeradar analyze --diff-file samples/auth-change.diff
+```
+
+produces a report beginning with:
 
 ```markdown
 # MergeRadar Report
 
 ## Risk Level
-**High** (score: 7)
+**High** (score: 8)
 
 ## Summary
-This change touches authentication-related code, deployment configuration, and a database migration.
+This change touches auth, infra and triggered the following main signals:
+auth-sensitive code changed, infrastructure or deployment config changed,
+no tests changed for risky areas.
 
 ## Triggered Risk Signals
-- **[+3] Database migration changed**
 - **[+3] Auth-sensitive code changed**
+- **[+2] Infrastructure or deployment config changed**
 - **[+2] No tests changed for risky areas**
+- **[+1] No docs changed for risky areas**
 ```
 
-## Current rules
+The full report also includes reasons for each signal, missing evidence,
+recommended checks, and changed files grouped by category.
 
-- database migration changed
-- auth-sensitive path changed
-- infra/deploy config changed
-- public API path changed
-- environment/config changed
-- risky areas changed without tests
-- risky areas changed without docs
-- large diff threshold exceeded
-- multiple top-level components touched
-- docs-only or tests-only stabilizers
+## Development
+
+Install the development dependencies as shown above, then run the test suite:
+
+```bash
+pytest
+```
+
+The test suite covers path classification and representative scoring behavior.
+Sample diffs are available in `samples/` for manual CLI checks.
+
+## Limitations
+
+- Analysis is path-heuristic based, not AST-aware.
+- Unified diff parsing is intentionally simple.
+- Untracked files are not included when analyzing a local working tree.
+- Recommendations are deterministic and generic rather than repository-specific.
+- Rules and thresholds are currently built in and cannot yet be configured.
 
 ## Roadmap
 
 ### v0.2
 
 - GitHub Action
-- PR comment mode
+- pull request comment mode
 - CODEOWNERS awareness
-- custom config file
+- custom configuration file
 
 ### v0.3
 
-- optional LLM-generated narrative summary layered on deterministic signals
+- optional LLM-generated narrative summaries layered on deterministic signals
 - richer ownership and runbook checks
 - repository-specific rule tuning
-
-## Limitations
-
-- v0.1 is path-heuristic based, not AST-aware
-- unified diff parsing is intentionally simple
-- recommendations are deterministic and generic
