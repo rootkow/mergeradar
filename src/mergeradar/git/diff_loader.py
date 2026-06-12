@@ -8,6 +8,7 @@ from mergeradar.models import ChangedFile
 
 DIFF_HEADER_RE = re.compile(r"^diff --git a/(.+?) b/(.+)$")
 HUNK_RE = re.compile(r"^@@ .+ @@")
+BRACED_RENAME_RE = re.compile(r"^(.*)\{.* => (.*)\}(.*)$")
 
 
 class DiffLoaderError(RuntimeError):
@@ -16,7 +17,11 @@ class DiffLoaderError(RuntimeError):
     pass
 
 
-def load_changed_files(repo_path: Path, base: str | None = None, head: str | None = None) -> list[ChangedFile]:
+def load_changed_files(
+    repo_path: Path,
+    base: str | None = None,
+    head: str | None = None,
+) -> list[ChangedFile]:
     """Load changed files from a git repository diff.
 
     Args:
@@ -56,6 +61,7 @@ def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
     old_path: str | None = None
     additions = 0
     deletions = 0
+    status = "M"
 
     for raw_line in content.splitlines():
         header_match = DIFF_HEADER_RE.match(raw_line)
@@ -65,7 +71,7 @@ def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
                     ChangedFile(
                         path=current_path,
                         old_path=old_path,
-                        status="M",
+                        status=status,
                         additions=additions,
                         deletions=deletions,
                     )
@@ -75,6 +81,25 @@ def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
             current_path = header_match.group(2)
             additions = 0
             deletions = 0
+            status = "M"
+            continue
+
+        if raw_line.startswith("new file mode "):
+            status = "A"
+            continue
+
+        if raw_line.startswith("deleted file mode "):
+            status = "D"
+            continue
+
+        if raw_line.startswith("rename from "):
+            old_path = raw_line.removeprefix("rename from ")
+            status = "R"
+            continue
+
+        if raw_line.startswith("rename to "):
+            current_path = raw_line.removeprefix("rename to ")
+            status = "R"
             continue
 
         if current_path is None or raw_line.startswith(("+++", "---")) or HUNK_RE.match(raw_line):
@@ -90,7 +115,7 @@ def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
             ChangedFile(
                 path=current_path,
                 old_path=old_path,
-                status="M",
+                status=status,
                 additions=additions,
                 deletions=deletions,
             )
@@ -104,6 +129,9 @@ def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
 
 def _build_spec(base: str | None, head: str | None) -> str:
     """Build the git diff spec string based on the provided base and head refs."""
+
+    if head and not base:
+        raise DiffLoaderError("--head requires --base.")
 
     if base and head:
         return f"{base}...{head}"
@@ -126,8 +154,11 @@ def _run_git_diff(repo_path: Path, args: list[str]) -> str:
     return result.stdout
 
 
-def _merge_name_status_and_numstat(name_status_output: str, numstat_output: str) -> list[ChangedFile]:
-    """Merge the output of git diff --name-status and git diff --numstat into a list of ChangedFile objects."""
+def _merge_name_status_and_numstat(
+    name_status_output: str,
+    numstat_output: str,
+) -> list[ChangedFile]:
+    """Merge Git name-status and numstat output into changed files."""
 
     numstat_map: dict[str, tuple[int, int]] = {}
     for line in numstat_output.splitlines():
@@ -141,7 +172,7 @@ def _merge_name_status_and_numstat(name_status_output: str, numstat_output: str)
         additions_raw, deletions_raw, path = parts[0], parts[1], parts[-1]
         additions = int(additions_raw) if additions_raw.isdigit() else 0
         deletions = int(deletions_raw) if deletions_raw.isdigit() else 0
-        numstat_map[path] = (additions, deletions)
+        numstat_map[_rename_destination(path)] = (additions, deletions)
 
     changed_files: list[ChangedFile] = []
     for line in name_status_output.splitlines():
@@ -176,3 +207,17 @@ def _merge_name_status_and_numstat(name_status_output: str, numstat_output: str)
         raise DiffLoaderError("No file changes found. Is your diff empty?")
 
     return changed_files
+
+
+def _rename_destination(path: str) -> str:
+    """Normalize Git's compact rename path to its destination path."""
+
+    braced_match = BRACED_RENAME_RE.match(path)
+    if braced_match:
+        prefix, destination, suffix = braced_match.groups()
+        return f"{prefix}{destination}{suffix}"
+
+    if " => " in path:
+        return path.rsplit(" => ", maxsplit=1)[1]
+
+    return path

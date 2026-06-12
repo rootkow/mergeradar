@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import PurePosixPath
 
 from mergeradar.models import ChangedFile
@@ -17,6 +18,31 @@ from mergeradar.utils.patterns import (
     top_level_component,
 )
 
+TOKEN_RE = re.compile(r"[^a-z0-9]+")
+NORMALIZED_INFRA_FILENAMES = {name.lower() for name in INFRA_FILENAMES}
+
+
+def _matches_path_keyword(path: str, keywords: set[str]) -> bool:
+    """Return whether a path contains an explicit keyword segment or filename token."""
+
+    parts = normalized_parts(path)
+    filename = parts[-1] if parts else ""
+    tokens = {token for token in TOKEN_RE.split(filename) if token}
+    joined = "/".join(parts)
+
+    for keyword in keywords:
+        normalized_keyword = keyword.lower()
+        if "/" in normalized_keyword:
+            if normalized_keyword in joined:
+                return True
+        elif "." in normalized_keyword:
+            if filename == normalized_keyword:
+                return True
+        elif normalized_keyword in parts or normalized_keyword in tokens:
+            return True
+
+    return False
+
 
 def classify_file(path: str) -> str:
     """Classify a file based on its path and name.
@@ -29,30 +55,32 @@ def classify_file(path: str) -> str:
     """
 
     parts = normalized_parts(path)
-    filename = PurePosixPath(path).name
-    suffix = PurePosixPath(path).suffix.lower()
-    joined = "/".join(parts)
-
-    if any(keyword in joined for keyword in MIGRATION_KEYWORDS):
+    filename = parts[-1] if parts else ""
+    suffix = PurePosixPath(filename).suffix.lower()
+    if _matches_path_keyword(path, MIGRATION_KEYWORDS):
         return "database"
 
     if "docs" in parts or suffix in DOC_EXTENSIONS or filename.lower() == "readme.md":
         return "docs"
 
-    if any(keyword in parts or keyword in filename.lower() for keyword in TEST_KEYWORDS):
+    if _matches_path_keyword(path, TEST_KEYWORDS):
         return "tests"
 
-    if filename in INFRA_FILENAMES or any(keyword in joined for keyword in INFRA_KEYWORDS):
+    if filename in NORMALIZED_INFRA_FILENAMES or _matches_path_keyword(
+        path, INFRA_KEYWORDS
+    ):
         return "infra"
 
-    if suffix in CONFIG_EXTENSIONS or any(keyword in joined for keyword in {"config", "settings", "values"}):
+    if suffix in CONFIG_EXTENSIONS or _matches_path_keyword(
+        path, {"config", "settings", "values"}
+    ):
         return "config"
 
     if suffix in CODE_EXTENSIONS:
-        if any(keyword in joined for keyword in AUTH_KEYWORDS):
+        if _matches_path_keyword(path, AUTH_KEYWORDS):
             return "auth"
 
-        if any(keyword in joined for keyword in API_KEYWORDS):
+        if _matches_path_keyword(path, API_KEYWORDS):
             return "api"
 
         return "app"

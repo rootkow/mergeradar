@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -29,13 +30,27 @@ def main() -> None:
 
 @app.command()
 def analyze(
-    repo: Path = typer.Option(Path("."), "--repo", help="Path to the local git repository."),
-    base: str | None = typer.Option(None, "--base", help="Base ref to diff from."),
-    head: str | None = typer.Option(None, "--head", help="Head ref to diff to."),
-    diff_file: Path | None = typer.Option(None, "--diff-file", help="Path to a saved unified diff file."),
-    output: Path | None = typer.Option(None, "--output", help="Optional file path to write the report."),
-    output_format: str = typer.Option("markdown", "--format", help="Output format: markdown or json."),
-    verbose: bool = typer.Option(False, "--verbose", help="Print extra debugging context."),
+    repo: Annotated[
+        Path, typer.Option("--repo", help="Path to the local git repository.")
+    ] = Path("."),
+    base: Annotated[str | None, typer.Option("--base", help="Base ref to diff from.")] = None,
+    head: Annotated[str | None, typer.Option("--head", help="Head ref to diff to.")] = None,
+    diff_file: Annotated[
+        Path | None,
+        typer.Option("--diff-file", help="Path to a saved unified diff file."),
+    ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Optional file path to write the report."),
+    ] = None,
+    output_format: Annotated[
+        str,
+        typer.Option("--format", help="Output format: markdown or json."),
+    ] = "markdown",
+    verbose: Annotated[
+        bool,
+        typer.Option("--verbose", help="Print extra debugging context."),
+    ] = False,
 ) -> None:
     """Analyze a local git diff or a saved diff file."""
 
@@ -66,9 +81,9 @@ def analyze(
 
         if output is not None:
             output.write_text(rendered, encoding="utf-8")
-            console.print(f"[green]Wrote report to {output}[/green]")
+            typer.echo(f"Wrote report to {output}", err=True)
 
-        console.print(rendered)
+        typer.echo(rendered)
 
         if verbose:
             console.print(
