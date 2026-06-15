@@ -11,11 +11,7 @@ from rich.panel import Panel
 from mergeradar.analysis.classifier import enrich_changed_files
 from mergeradar.analysis.context_builder import build_context
 from mergeradar.analysis.scorer import score_context
-from mergeradar.git.diff_loader import (
-    DiffLoaderError,
-    load_changed_files,
-    load_changed_files_from_diff_file,
-)
+from mergeradar.git.diff_loader import DiffLoaderError, load_changed_files, load_changed_files_from_diff_file
 from mergeradar.git.repo_inspector import is_git_repo
 from mergeradar.renderers.markdown import render_markdown
 
@@ -25,34 +21,20 @@ console = Console()
 
 @app.callback()
 def main() -> None:
-    """MergeRadar CLI."""
+    """Define the MergeRadar command group."""
 
 
 @app.command()
 def analyze(
-    repo: Annotated[
-        Path, typer.Option("--repo", help="Path to the local git repository.")
-    ] = Path("."),
+    repo: Annotated[Path, typer.Option("--repo", help="Path to the local git repository.")] = Path("."),
     base: Annotated[str | None, typer.Option("--base", help="Base ref to diff from.")] = None,
     head: Annotated[str | None, typer.Option("--head", help="Head ref to diff to.")] = None,
-    diff_file: Annotated[
-        Path | None,
-        typer.Option("--diff-file", help="Path to a saved unified diff file."),
-    ] = None,
-    output: Annotated[
-        Path | None,
-        typer.Option("--output", help="Optional file path to write the report."),
-    ] = None,
-    output_format: Annotated[
-        str,
-        typer.Option("--format", help="Output format: markdown or json."),
-    ] = "markdown",
-    verbose: Annotated[
-        bool,
-        typer.Option("--verbose", help="Print extra debugging context."),
-    ] = False,
+    diff_file: Annotated[Path | None, typer.Option("--diff-file", help="Path to a saved unified diff file.")] = None,
+    output: Annotated[Path | None, typer.Option("--output", help="Optional file path to write the report.")] = None,
+    output_format: Annotated[str, typer.Option("--format", help="Output format: markdown or json.")] = "markdown",
+    verbose: Annotated[bool, typer.Option("--verbose", help="Print extra debugging context.")] = False,
 ) -> None:
-    """Analyze a local git diff or a saved diff file."""
+    """Analyze a repository diff or saved diff and render its risk report."""
 
     try:
         if diff_file is not None:

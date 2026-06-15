@@ -8,10 +8,7 @@ runner = CliRunner()
 
 
 def test_json_stdout_is_machine_readable() -> None:
-    result = runner.invoke(
-        app,
-        ["analyze", "--diff-file", "samples/auth-change.diff", "--format", "json"],
-    )
+    result = runner.invoke(app, ["analyze", "--diff-file", "samples/auth-change.diff", "--format", "json"])
 
     assert result.exit_code == 0
     report = json.loads(result.stdout)

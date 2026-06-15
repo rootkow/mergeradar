@@ -21,14 +21,7 @@ CATEGORY_HEADINGS = {
 # TODO: Consider allowing the user to customize the Markdown output, e.g. by providing a template or
 # configuration options for which sections to include, formatting styles, etc.
 def render_markdown(report: RiskReport) -> str:
-    """Render a RiskReport object as a Markdown string.
-
-    Args:
-        report: The RiskReport to render.
-
-    Returns:
-        A Markdown string representation of the report.
-    """
+    """Render a risk report as Markdown with a trailing newline."""
 
     lines: list[str] = []
     lines.append("# MergeRadar Report")
@@ -70,9 +63,8 @@ def render_markdown(report: RiskReport) -> str:
     for category, files in grouped.items():
         lines.append(f"### {CATEGORY_HEADINGS.get(category, category.title())}")
         for changed_file in files:
-            lines.append(
-                f"- `{changed_file.path}` ({changed_file.status}, +{changed_file.additions}/-{changed_file.deletions})"
-            )
+            change_summary = f"{changed_file.status}, +{changed_file.additions}/-{changed_file.deletions}"
+            lines.append(f"- `{changed_file.path}` ({change_summary})")
 
         lines.append("")
 
@@ -80,7 +72,7 @@ def render_markdown(report: RiskReport) -> str:
 
 
 def _group_changed_files(changed_files: list[ChangedFile]) -> dict[str, list[ChangedFile]]:
-    """Group changed files by their category."""
+    """Group changed files by category while preserving input order."""
 
     grouped: dict[str, list[ChangedFile]] = defaultdict(list)
     for changed_file in changed_files:

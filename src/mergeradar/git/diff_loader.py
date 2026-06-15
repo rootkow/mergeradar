@@ -12,9 +12,7 @@ BRACED_RENAME_RE = re.compile(r"^(.*)\{.* => (.*)\}(.*)$")
 
 
 class DiffLoaderError(RuntimeError):
-    """Custom error for issues encountered while loading git diffs."""
-
-    pass
+    """Raised when a Git diff cannot be loaded or contains no changes."""
 
 
 def load_changed_files(
@@ -22,18 +20,18 @@ def load_changed_files(
     base: str | None = None,
     head: str | None = None,
 ) -> list[ChangedFile]:
-    """Load changed files from a git repository diff.
+    """Load changed files by running Git against a local repository.
 
     Args:
-        repo_path (Path): Path to the local git repository.
-        base (str | None): Base ref to diff from. Defaults to None.
-        head (str | None): Head ref to diff to. Defaults to None.
+        repo_path: Local Git repository to inspect.
+        base: Optional base ref for a three-dot comparison.
+        head: Optional head ref. Requires `base`; defaults to `HEAD`.
 
     Raises:
-        DiffLoaderError: If the git diff command fails or if no file changes are found.
+        DiffLoaderError: If the comparison is invalid, Git fails, or no changes exist.
 
     Returns:
-        list[ChangedFile]: List of ChangedFile objects representing the changes.
+        Changed files with statuses and line counts.
     """
 
     spec = _build_spec(base=base, head=head)
@@ -43,16 +41,16 @@ def load_changed_files(
 
 
 def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
-    """Parse a unified diff file and return a list of ChangedFile objects.
+    """Parse changed files from a saved unified diff.
 
     Args:
-        diff_file (Path): Path to the unified diff file.
+        diff_file: UTF-8 unified diff to parse.
 
     Raises:
-        DiffLoaderError: If no file changes are found.
+        DiffLoaderError: If the diff contains no parseable file changes.
 
     Returns:
-        list[ChangedFile]: List of ChangedFile objects representing the changes.
+        Changed files with statuses and line counts.
     """
 
     content = diff_file.read_text(encoding="utf-8")
@@ -67,15 +65,7 @@ def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
         header_match = DIFF_HEADER_RE.match(raw_line)
         if header_match:
             if current_path is not None:
-                files.append(
-                    ChangedFile(
-                        path=current_path,
-                        old_path=old_path,
-                        status=status,
-                        additions=additions,
-                        deletions=deletions,
-                    )
-                )
+                files.append(_build_changed_file(current_path, old_path, status, additions, deletions))
 
             old_path = header_match.group(1)
             current_path = header_match.group(2)
@@ -111,15 +101,7 @@ def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
             deletions += 1
 
     if current_path is not None:
-        files.append(
-            ChangedFile(
-                path=current_path,
-                old_path=old_path,
-                status=status,
-                additions=additions,
-                deletions=deletions,
-            )
-        )
+        files.append(_build_changed_file(current_path, old_path, status, additions, deletions))
 
     if not files:
         raise DiffLoaderError(f"No parseable file changes found in diff file: {diff_file}")
@@ -127,8 +109,26 @@ def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
     return files
 
 
+def _build_changed_file(
+    path: str,
+    old_path: str | None,
+    status: str,
+    additions: int,
+    deletions: int,
+) -> ChangedFile:
+    """Create a changed-file record from parsed diff metadata."""
+
+    return ChangedFile(
+        path=path,
+        old_path=old_path,
+        status=status,
+        additions=additions,
+        deletions=deletions,
+    )
+
+
 def _build_spec(base: str | None, head: str | None) -> str:
-    """Build the git diff spec string based on the provided base and head refs."""
+    """Build the Git diff revision spec for the requested comparison."""
 
     if head and not base:
         raise DiffLoaderError("--head requires --base.")
@@ -143,7 +143,7 @@ def _build_spec(base: str | None, head: str | None) -> str:
 
 
 def _run_git_diff(repo_path: Path, args: list[str]) -> str:
-    """Run a git diff command in the specified repository and return the output."""
+    """Run `git diff` in a repository and return its standard output."""
 
     command = ["git", "-C", str(repo_path), "diff", *args]
     result = subprocess.run(command, capture_output=True, text=True, check=False)
@@ -158,7 +158,7 @@ def _merge_name_status_and_numstat(
     name_status_output: str,
     numstat_output: str,
 ) -> list[ChangedFile]:
-    """Merge Git name-status and numstat output into changed files."""
+    """Combine Git status and line-count output into changed-file records."""
 
     numstat_map: dict[str, tuple[int, int]] = {}
     for line in numstat_output.splitlines():
@@ -210,7 +210,7 @@ def _merge_name_status_and_numstat(
 
 
 def _rename_destination(path: str) -> str:
-    """Normalize Git's compact rename path to its destination path."""
+    """Extract the destination from Git's compact rename notation."""
 
     braced_match = BRACED_RENAME_RE.match(path)
     if braced_match:

@@ -7,8 +7,20 @@ from mergeradar.models import ChangedFile
 def test_risky_change_without_tests_is_medium_or_higher() -> None:
     changed_files = enrich_changed_files(
         [
-            ChangedFile(path="app/auth/service.py", old_path=None, status="M", additions=20, deletions=4),
-            ChangedFile(path="alembic/versions/123_add_users.py", old_path=None, status="A", additions=30, deletions=0),
+            ChangedFile(
+                path="app/auth/service.py",
+                old_path=None,
+                status="M",
+                additions=20,
+                deletions=4,
+            ),
+            ChangedFile(
+                path="alembic/versions/123_add_users.py",
+                old_path=None,
+                status="A",
+                additions=30,
+                deletions=0,
+            ),
         ]
     )
     context = build_context(repo_path=".", changed_files=changed_files)
@@ -22,7 +34,13 @@ def test_risky_change_without_tests_is_medium_or_higher() -> None:
 def test_docs_only_change_reduces_risk() -> None:
     changed_files = enrich_changed_files(
         [
-            ChangedFile(path="docs/setup.md", old_path=None, status="M", additions=12, deletions=1),
+            ChangedFile(
+                path="docs/setup.md",
+                old_path=None,
+                status="M",
+                additions=12,
+                deletions=1,
+            )
         ]
     )
     context = build_context(repo_path=".", changed_files=changed_files)

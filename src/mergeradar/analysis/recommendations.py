@@ -4,7 +4,6 @@ from mergeradar.models import TriggeredRule
 
 # TODO:
 # - Configurationize these mappings
-# - Integrate with model
 RECOMMENDATIONS_BY_RULE = {
     "db.migration_changed": "Validate the migration against a staging or snapshot dataset before deploy.",
     "auth.path_touched": "Verify login, session, token refresh, and permission-protected flows.",
@@ -24,14 +23,7 @@ MISSING_EVIDENCE_BY_RULE = {
 
 
 def build_recommendations(triggered_rules: list[TriggeredRule]) -> list[str]:
-    """Build a list of recommendations based on triggered rules.
-
-    Args:
-        triggered_rules (list[TriggeredRule]): The list of triggered rules.
-
-    Returns:
-        list[str]: A list of recommendations.
-    """
+    """Return deduplicated recommendations for the triggered rules."""
 
     recommendations: list[str] = []
     for rule in triggered_rules:
@@ -46,14 +38,7 @@ def build_recommendations(triggered_rules: list[TriggeredRule]) -> list[str]:
 
 
 def build_missing_evidence(triggered_rules: list[TriggeredRule]) -> list[str]:
-    """Build a list of missing evidence based on triggered rules.
-
-    Args:
-        triggered_rules (list[TriggeredRule]): The list of triggered rules.
-
-    Returns:
-        list[str]: A list of missing evidence.
-    """
+    """Return deduplicated evidence gaps for the triggered rules."""
 
     missing: list[str] = []
     for rule in triggered_rules:

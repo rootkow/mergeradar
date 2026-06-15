@@ -6,14 +6,7 @@ from mergeradar.rules import get_rules
 
 
 def calculate_risk_level(score: int) -> str:
-    """Calculate the risk level based on the total score from triggered rules.
-
-    Args:
-        score (int): Total score from triggered rules.
-
-    Returns:
-        str: Risk level as "Low", "Medium", or "High".
-    """
+    """Map a numeric risk score to its display level."""
 
     if score >= 6:
         return "High"
@@ -25,15 +18,7 @@ def calculate_risk_level(score: int) -> str:
 
 
 def build_summary(context: AnalysisContext, triggered_rules: list[TriggeredRule]) -> str:
-    """Build a summary of the analysis context and triggered rules.
-
-    Args:
-        context (AnalysisContext): The analysis context.
-        triggered_rules (list[TriggeredRule]): List of triggered rules.
-
-    Returns:
-        str: Summary of the analysis.
-    """
+    """Summarize the touched categories and strongest triggered rules."""
 
     categories = ", ".join(sorted(context.categories_touched)) or "unknown areas"
     if not triggered_rules:
@@ -45,14 +30,7 @@ def build_summary(context: AnalysisContext, triggered_rules: list[TriggeredRule]
 
 
 def score_context(context: AnalysisContext) -> RiskReport:
-    """Score the analysis context and return a risk report.
-
-    Args:
-        context (AnalysisContext): The analysis context.
-
-    Returns:
-        RiskReport: The risk report for the given context.
-    """
+    """Evaluate all rules and build a complete risk report."""
 
     triggered_rules: list[TriggeredRule] = []
     for rule in get_rules():

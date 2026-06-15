@@ -7,7 +7,7 @@ from typing import Any
 
 @dataclass(slots=True)
 class ChangedFile:
-    """Represents a file that has changed in a git repository."""
+    """A file reported by a Git diff."""
 
     path: str
     old_path: str | None
@@ -18,12 +18,14 @@ class ChangedFile:
     top_level_component: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """Return a dictionary representation of the changed file."""
+
         return asdict(self)
 
 
 @dataclass(slots=True)
 class AnalysisContext:
-    """Represents the context of an analysis, including changed files and touched categories/components."""
+    """Aggregate metadata derived from a collection of changed files."""
 
     repo_path: str
     changed_files: list[ChangedFile]
@@ -43,7 +45,7 @@ class AnalysisContext:
 
 @dataclass(slots=True)
 class TriggeredRule:
-    """Represents a rule that has been triggered during analysis."""
+    """A rule evaluation that contributed to an analysis report."""
 
     id: str
     title: str
@@ -51,12 +53,14 @@ class TriggeredRule:
     reason: str
 
     def to_dict(self) -> dict[str, Any]:
+        """Return a dictionary representation of the triggered rule."""
+
         return asdict(self)
 
 
 @dataclass(slots=True)
 class RiskReport:
-    """Represents a risk report generated from an analysis."""
+    """The scored risk assessment for a collection of changed files."""
 
     risk_level: str
     score: int
@@ -68,6 +72,8 @@ class RiskReport:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable dictionary representation of the report."""
+
         return {
             "risk_level": self.risk_level,
             "score": self.score,
@@ -82,7 +88,7 @@ class RiskReport:
 
 @dataclass(slots=True)
 class AnalyzeOptions:
-    """Represents the options for analyzing a git repository or diff file."""
+    """CLI options for analyzing a repository or saved diff."""
 
     repo_path: Path
     base: str | None = None

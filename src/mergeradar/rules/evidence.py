@@ -6,17 +6,10 @@ from mergeradar.rules.base import SimpleRule
 
 
 class NoTestsForRiskyChangeRule(SimpleRule):
-    """Rule that triggers when risky changes are made without corresponding test changes."""
+    """Detect risky changes that do not include test changes."""
 
     def evaluate(self, context: AnalysisContext) -> TriggeredRule | None:
-        """Evaluate the rule against the given analysis context.
-
-        Args:
-            context: The analysis context.
-
-        Returns:
-            A TriggeredRule if the rule is triggered, otherwise None.
-        """
+        """Return a result for risky changes without accompanying tests."""
 
         if not has_risky_changes(context) or context.has_test_changes:
             return None
@@ -25,17 +18,10 @@ class NoTestsForRiskyChangeRule(SimpleRule):
 
 
 class NoDocsForRiskyChangeRule(SimpleRule):
-    """Rule that triggers when risky changes are made without corresponding documentation changes."""
+    """Detect risky changes that do not include documentation changes."""
 
     def evaluate(self, context: AnalysisContext) -> TriggeredRule | None:
-        """Evaluate the rule against the given analysis context.
-
-        Args:
-            context: The analysis context.
-
-        Returns:
-            A TriggeredRule if the rule is triggered, otherwise None.
-        """
+        """Return a result for risky changes without accompanying documentation."""
 
         if not has_risky_changes(context) or context.has_doc_changes:
             return None

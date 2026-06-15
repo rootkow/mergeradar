@@ -5,17 +5,10 @@ from mergeradar.rules.base import SimpleRule
 
 
 class LargeDiffRule(SimpleRule):
-    """Rule that triggers when the change exceeds a certain size threshold."""
+    """Detect changes that exceed the configured size thresholds."""
 
     def evaluate(self, context: AnalysisContext) -> TriggeredRule | None:
-        """Evaluate the rule against the given analysis context.
-
-        Args:
-            context: The analysis context.
-
-        Returns:
-            A TriggeredRule if the rule is triggered, otherwise None.
-        """
+        """Return a result when file count or line churn is large."""
 
         churn = context.total_additions + context.total_deletions
         if churn < 400 and context.total_files_changed < 15:
@@ -25,17 +18,10 @@ class LargeDiffRule(SimpleRule):
 
 
 class MultipleComponentsRule(SimpleRule):
-    """Rule that triggers when multiple top-level components are changed."""
+    """Detect changes spanning multiple top-level components."""
 
     def evaluate(self, context: AnalysisContext) -> TriggeredRule | None:
-        """Evaluate the rule against the given analysis context.
-
-        Args:
-            context: The analysis context.
-
-        Returns:
-            A TriggeredRule if the rule is triggered, otherwise None.
-        """
+        """Return a result when at least three components are touched."""
 
         if len(context.components_touched) < 3:
             return None
@@ -45,17 +31,10 @@ class MultipleComponentsRule(SimpleRule):
 
 
 class DocsOnlyRule(SimpleRule):
-    """Rule that triggers when only documentation files are changed."""
+    """Detect changes containing only documentation files."""
 
     def evaluate(self, context: AnalysisContext) -> TriggeredRule | None:
-        """Evaluate the rule against the given analysis context.
-
-        Args:
-            context: The analysis context.
-
-        Returns:
-            A TriggeredRule if the rule is triggered, otherwise None.
-        """
+        """Return a stabilizing result for documentation-only changes."""
 
         if context.categories_touched != {"docs"}:
             return None
@@ -64,17 +43,10 @@ class DocsOnlyRule(SimpleRule):
 
 
 class TestsOnlyRule(SimpleRule):
-    """Rule that triggers when only test files are changed."""
+    """Detect changes containing only test files."""
 
     def evaluate(self, context: AnalysisContext) -> TriggeredRule | None:
-        """Evaluate the rule against the given analysis context.
-
-        Args:
-            context: The analysis context.
-
-        Returns:
-            A TriggeredRule if the rule is triggered, otherwise None.
-        """
+        """Return a stabilizing result for test-only changes."""
 
         if context.categories_touched != {"tests"}:
             return None

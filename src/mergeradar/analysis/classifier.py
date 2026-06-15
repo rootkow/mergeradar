@@ -9,6 +9,7 @@ from mergeradar.utils.patterns import (
     AUTH_KEYWORDS,
     CODE_EXTENSIONS,
     CONFIG_EXTENSIONS,
+    CONFIG_KEYWORDS,
     DOC_EXTENSIONS,
     INFRA_FILENAMES,
     INFRA_KEYWORDS,
@@ -23,7 +24,7 @@ NORMALIZED_INFRA_FILENAMES = {name.lower() for name in INFRA_FILENAMES}
 
 
 def _matches_path_keyword(path: str, keywords: set[str]) -> bool:
-    """Return whether a path contains an explicit keyword segment or filename token."""
+    """Return whether a path contains a keyword segment or filename token."""
 
     parts = normalized_parts(path)
     filename = parts[-1] if parts else ""
@@ -45,14 +46,7 @@ def _matches_path_keyword(path: str, keywords: set[str]) -> bool:
 
 
 def classify_file(path: str) -> str:
-    """Classify a file based on its path and name.
-
-    Args:
-        path (str): The file path to classify.
-
-    Returns:
-        str: The category of the file.
-    """
+    """Return the analysis category inferred from a file path."""
 
     parts = normalized_parts(path)
     filename = parts[-1] if parts else ""
@@ -66,14 +60,10 @@ def classify_file(path: str) -> str:
     if _matches_path_keyword(path, TEST_KEYWORDS):
         return "tests"
 
-    if filename in NORMALIZED_INFRA_FILENAMES or _matches_path_keyword(
-        path, INFRA_KEYWORDS
-    ):
+    if filename in NORMALIZED_INFRA_FILENAMES or _matches_path_keyword(path, INFRA_KEYWORDS):
         return "infra"
 
-    if suffix in CONFIG_EXTENSIONS or _matches_path_keyword(
-        path, {"config", "settings", "values"}
-    ):
+    if suffix in CONFIG_EXTENSIONS or _matches_path_keyword(path, CONFIG_KEYWORDS):
         return "config"
 
     if suffix in CODE_EXTENSIONS:
@@ -89,19 +79,17 @@ def classify_file(path: str) -> str:
 
 
 def enrich_changed_files(changed_files: list[ChangedFile]) -> list[ChangedFile]:
-    """Enrich a list of ChangedFile objects with additional metadata.
+    """Add classification metadata to changed files in place.
 
     Args:
-        changed_files (list[ChangedFile]): The list of ChangedFile objects to enrich.
+        changed_files: Files to classify and assign to top-level components.
 
     Returns:
-        list[ChangedFile]: The enriched list of ChangedFile objects.
+        The same list instance after its entries have been updated.
     """
 
-    enriched: list[ChangedFile] = []
     for changed_file in changed_files:
         changed_file.category = classify_file(changed_file.path)
         changed_file.top_level_component = top_level_component(changed_file.path)
-        enriched.append(changed_file)
 
-    return enriched
+    return changed_files
