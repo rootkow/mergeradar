@@ -23,6 +23,7 @@ def test_head_without_base_is_rejected() -> None:
     assert "--head requires --base" in result.stdout
 
 
+
 def test_check_below_threshold_passes() -> None:
     result = runner.invoke(app, ["analyze", "--diff-file", "samples/auth-change.diff", "--format", "json", "--check", "9"])
 
@@ -51,3 +52,11 @@ def test_env_var_check_overridden_by_cli(monkeypatch: pytest.MonkeyPatch) -> Non
     result = runner.invoke(app, ["analyze", "--diff-file", "samples/auth-change.diff", "--format", "json", "--check", "9"])
 
     assert result.exit_code == 0
+
+
+def test_verbose_shows_classification_reasons() -> None:
+    result = runner.invoke(app, ["analyze", "--diff-file", "samples/auth-change.diff", "--verbose"])
+
+    assert result.exit_code == 0
+    assert "auth" in result.stdout
+    assert "infra" in result.stdout

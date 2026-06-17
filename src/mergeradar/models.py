@@ -15,6 +15,7 @@ class ChangedFile:
     additions: int
     deletions: int
     category: str = "unknown"
+    classification_reason: str | None = None
     top_level_component: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
