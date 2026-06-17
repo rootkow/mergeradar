@@ -15,6 +15,7 @@ class ChangedFile:
     additions: int
     deletions: int
     category: str = "unknown"
+    classification_reason: str | None = None
     top_level_component: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -38,6 +39,7 @@ class AnalysisContext:
     has_config_changes: bool
     has_auth_changes: bool
     has_api_changes: bool
+    has_dep_changes: bool
     total_files_changed: int
     total_additions: int
     total_deletions: int

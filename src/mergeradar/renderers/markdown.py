@@ -10,6 +10,7 @@ CATEGORY_HEADINGS = {
     "auth": "Authentication / Authorization",
     "api": "API Surface",
     "database": "Database",
+    "deps": "Dependencies",
     "infra": "Infrastructure",
     "config": "Configuration",
     "tests": "Tests",

@@ -91,12 +91,21 @@ Write a structured JSON report:
 mergeradar analyze --format json --output report.json
 ```
 
-Add the resolved repository, file count, categories, and components to the
-terminal output:
+Add per-file classification details to the terminal output:
 
 ```bash
 mergeradar analyze --verbose
 ```
+
+Use the report as a CI gate — exit non-zero whenever the risk score meets or
+exceeds a threshold:
+
+```bash
+mergeradar analyze --check 6
+```
+
+The threshold can also be set via the `MERGEDARAR_CHECK` environment variable.
+The CLI flag takes precedence when both are set.
 
 ## Comparison Behavior
 
@@ -146,6 +155,7 @@ Negative stabilizer scores cannot reduce the final score below zero.
 | Infrastructure or deployment config changed | +2 | Deployment, Docker, Terraform, Helm, Kubernetes, or workflow paths changed |
 | Public API surface may have changed | +2 | API, route, endpoint, handler, OpenAPI, or Swagger code changed |
 | Environment or app configuration changed | +2 | A recognized configuration file or path changed |
+| Dependencies changed | +2 | A dependency or package manifest (e.g. `requirements.txt`, `package.json`, `Cargo.toml`) changed |
 | No tests changed for risky areas | +2 | A risky category changed without a test-file change |
 | No docs changed for risky areas | +1 | A risky category changed without a documentation change |
 | Large diff size threshold exceeded | +1 | At least 400 changed lines or 15 changed files |
@@ -204,7 +214,7 @@ Sample diffs are available in `samples/` for manual CLI checks.
 - Unified diff parsing is intentionally simple.
 - Untracked files are not included when analyzing a local working tree.
 - Recommendations are deterministic and generic rather than repository-specific.
-- Rules and thresholds are currently built in and cannot yet be configured.
+- Risk scoring thresholds are configurable via `--check`; classification keywords are not yet user-configurable.
 
 ## Roadmap
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from mergeradar.models import AnalysisContext, ChangedFile
 
 # TODO: Configurationize this
-RISKY_CATEGORIES = {"database", "auth", "infra", "config", "api"}
+RISKY_CATEGORIES = {"database", "auth", "infra", "config", "api", "deps"}
 
 
 def build_context(repo_path: str, changed_files: list[ChangedFile]) -> AnalysisContext:
@@ -28,6 +28,7 @@ def build_context(repo_path: str, changed_files: list[ChangedFile]) -> AnalysisC
         has_config_changes="config" in categories_touched,
         has_auth_changes="auth" in categories_touched,
         has_api_changes="api" in categories_touched,
+        has_dep_changes="deps" in categories_touched,
         total_files_changed=len(changed_files),
         total_additions=sum(changed_file.additions for changed_file in changed_files),
         total_deletions=sum(changed_file.deletions for changed_file in changed_files),
