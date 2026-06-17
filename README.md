@@ -205,8 +205,16 @@ Install the development dependencies as shown above, then run the test suite:
 pytest
 ```
 
-The test suite covers path classification and representative scoring behavior.
-Sample diffs are available in `samples/` for manual CLI checks.
+For a quick end-to-end CLI smoke test, analyze the included auth-change sample:
+
+```bash
+python -m mergeradar analyze --diff-file samples/auth-change.diff --format json
+```
+
+The test suite covers CLI output, diff loading, path classification, and
+representative scoring behavior. Sample diffs are available in `samples/` for
+manual CLI checks. Ruff is configured in `pyproject.toml` for formatting and
+linting when working on code changes.
 
 ## Limitations
 
