@@ -8,14 +8,45 @@ CODE_EXTENSIONS = {".py", ".ts", ".js", ".go", ".java", ".rs", ".kt", ".cs"}
 DOC_EXTENSIONS = {".md", ".rst", ".adoc"}
 CONFIG_EXTENSIONS = {".yaml", ".yml", ".json", ".toml", ".ini", ".env", ".cfg"}
 INFRA_FILENAMES = {"Dockerfile", "docker-compose.yml", "docker-compose.yaml"}
-AUTH_KEYWORDS = {"auth", "permission", "permissions", "middleware", "session", "jwt", "oauth", "rbac", "login"}
+AUTH_KEYWORDS = {
+    "auth",
+    "jwt",
+    "login",
+    "middleware",
+    "oauth",
+    "permission",
+    "permissions",
+    "rbac",
+    "session",
+}
 API_KEYWORDS = {"route", "routes", "api", "openapi", "swagger", "endpoint", "handler"}
 MIGRATION_KEYWORDS = {"migrations", "alembic", "schema.sql", "migration"}
 TEST_KEYWORDS = {"tests", "test", "spec"}
 INFRA_KEYWORDS = {"helm", "k8s", "terraform", ".github/workflows", "deploy", "docker", "infra"}
 CONFIG_KEYWORDS = {"config", "settings", "values", ".env"}
 DEP_FILENAMES = {"requirements.txt", "requirements.in", "Pipfile", "Pipfile.lock", "poetry.lock"}
-DEP_KEYWORDS = {"dependencies", "package.json", "package-lock.json", "yarn.lock", "Cargo.toml", "Cargo.lock", "go.mod", "go.sum", "build.gradle", "Gemfile", "Gemfile.lock"}
+DEP_KEYWORDS = {
+    "Cargo.lock",
+    "Cargo.toml",
+    "Gemfile",
+    "Gemfile.lock",
+    "build.gradle",
+    "dependencies",
+    "go.mod",
+    "go.sum",
+    "package-lock.json",
+    "package.json",
+    "yarn.lock",
+}
+LOCKFILE_FILENAMES = {
+    "Cargo.lock",
+    "Gemfile.lock",
+    "Pipfile.lock",
+    "go.sum",
+    "package-lock.json",
+    "poetry.lock",
+    "yarn.lock",
+}
 
 
 def normalized_parts(path: str) -> tuple[str, ...]:

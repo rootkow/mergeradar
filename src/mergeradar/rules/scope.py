@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+from pathlib import PurePosixPath
+
 from mergeradar.models import AnalysisContext, TriggeredRule
 from mergeradar.rules.base import SimpleRule
+from mergeradar.utils.patterns import LOCKFILE_FILENAMES
+
+NORMALIZED_LOCKFILE_FILENAMES = {name.lower() for name in LOCKFILE_FILENAMES}
 
 
 class LargeDiffRule(SimpleRule):
@@ -14,7 +19,9 @@ class LargeDiffRule(SimpleRule):
         if churn < 400 and context.total_files_changed < 15:
             return None
 
-        return self.trigger(f"Large change detected ({context.total_files_changed} files, {churn} lines of churn).")
+        return self.trigger(
+            f"Large change detected ({context.total_files_changed} files, {churn} lines of churn)."
+        )
 
 
 class MultipleComponentsRule(SimpleRule):
@@ -54,6 +61,23 @@ class TestsOnlyRule(SimpleRule):
         return self.trigger("Only test files changed.")
 
 
+class LockfileOnlyRule(SimpleRule):
+    """Detect changes containing only lockfile changes."""
+
+    def evaluate(self, context: AnalysisContext) -> TriggeredRule | None:
+        """Return a stabilizing result for lockfile-only changes."""
+
+        if not context.changed_files:
+            return None
+
+        for cf in context.changed_files:
+            filename = PurePosixPath(cf.path).name.lower()
+            if cf.status == "D" or filename not in NORMALIZED_LOCKFILE_FILENAMES:
+                return None
+
+        return self.trigger("Only lockfile changes detected.")
+
+
 RULES = [
     LargeDiffRule(
         id="scope.large_diff",
@@ -74,5 +98,10 @@ RULES = [
         id="stability.tests_only",
         title="Tests-only change",
         score=-1,
+    ),
+    LockfileOnlyRule(
+        id="stability.lockfile_only",
+        title="Lockfile-only change",
+        score=-3,
     ),
 ]

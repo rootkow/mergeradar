@@ -50,6 +50,43 @@ def test_dep_change_triggers_deps_rule() -> None:
     assert any(rule.id == "deps.changed" for rule in report.triggered_rules)
 
 
+def test_lockfile_only_reduces_risk() -> None:
+    changed_files = enrich_changed_files(
+        [
+            ChangedFile(
+                path="package-lock.json",
+                old_path=None,
+                status="M",
+                additions=40,
+                deletions=10,
+            ),
+        ]
+    )
+    context = build_context(repo_path=".", changed_files=changed_files)
+    report = score_context(context)
+
+    assert report.risk_level == "Low"
+    assert any(rule.id == "stability.lockfile_only" for rule in report.triggered_rules)
+
+
+def test_deleted_lockfile_does_not_reduce_risk() -> None:
+    changed_files = enrich_changed_files(
+        [
+            ChangedFile(
+                path="package-lock.json",
+                old_path="package-lock.json",
+                status="D",
+                additions=0,
+                deletions=40,
+            ),
+        ]
+    )
+    context = build_context(repo_path=".", changed_files=changed_files)
+    report = score_context(context)
+
+    assert not any(rule.id == "stability.lockfile_only" for rule in report.triggered_rules)
+
+
 def test_docs_only_change_reduces_risk() -> None:
     changed_files = enrich_changed_files(
         [
