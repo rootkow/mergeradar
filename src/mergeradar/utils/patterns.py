@@ -14,6 +14,8 @@ MIGRATION_KEYWORDS = {"migrations", "alembic", "schema.sql", "migration"}
 TEST_KEYWORDS = {"tests", "test", "spec"}
 INFRA_KEYWORDS = {"helm", "k8s", "terraform", ".github/workflows", "deploy", "docker", "infra"}
 CONFIG_KEYWORDS = {"config", "settings", "values", ".env"}
+DEP_FILENAMES = {"requirements.txt", "requirements.in", "Pipfile", "Pipfile.lock", "poetry.lock"}
+DEP_KEYWORDS = {"dependencies", "package.json", "package-lock.json", "yarn.lock", "Cargo.toml", "Cargo.lock", "go.mod", "go.sum", "build.gradle", "Gemfile", "Gemfile.lock"}
 
 
 def normalized_parts(path: str) -> tuple[str, ...]:
