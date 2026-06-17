@@ -69,9 +69,6 @@ def classify_file(path: str) -> tuple[str, str]:
     if filename.lower() in NORMALIZED_DEP_FILENAMES or _matches_path_keyword(path, DEP_KEYWORDS):
         return ("deps", "dependency or package manifest file matched")
 
-    if filename.lower() in NORMALIZED_DEP_FILENAMES or _matches_path_keyword(path, DEP_KEYWORDS):
-        return "deps"
-
     if suffix in CONFIG_EXTENSIONS or _matches_path_keyword(path, CONFIG_KEYWORDS):
         return ("config", "configuration file matched by extension or keyword")
 

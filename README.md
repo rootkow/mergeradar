@@ -49,80 +49,25 @@ python -m mergeradar --help
 
 ## Quick Start
 
-Analyze staged and unstaged changes in the current repository against `HEAD`:
-
 ```bash
+# Compare current working tree against HEAD
 mergeradar analyze
-```
 
-Analyze changes in another local repository:
-
-```bash
-mergeradar analyze --repo ../another-project
-```
-
-Analyze the changes introduced since a branch diverged from `main`:
-
-```bash
+# Compare against a base branch (uses BASE...HEAD)
 mergeradar analyze --base main
-```
 
-Compare two explicit refs:
-
-```bash
-mergeradar analyze --base main --head feature/my-change
-```
-
-Analyze a saved unified diff:
-
-```bash
+# Analyze a saved unified diff instead of a live repo
 mergeradar analyze --diff-file samples/auth-change.diff
+
+# Output as JSON and exit non-zero if score >= 6 (CI gate)
+mergeradar analyze --format json --output report.json --check 6
 ```
 
-Write a Markdown report to disk:
+The `--check` threshold can also be set via the `MERGEDARAR_CHECK` environment
+variable. The CLI flag takes precedence.
 
-```bash
-mergeradar analyze --output report.md
-```
-
-Write a structured JSON report:
-
-```bash
-mergeradar analyze --format json --output report.json
-```
-
-Add per-file classification details to the terminal output:
-
-```bash
-mergeradar analyze --verbose
-```
-
-Use the report as a CI gate — exit non-zero whenever the risk score meets or
-exceeds a threshold:
-
-```bash
-mergeradar analyze --check 6
-```
-
-The threshold can also be set via the `MERGEDARAR_CHECK` environment variable.
-The CLI flag takes precedence when both are set.
-
-## Comparison Behavior
-
-When no refs are supplied, MergeRadar runs the equivalent of `git diff HEAD`,
-which includes staged and unstaged tracked changes but not untracked files.
-
-Ref comparisons use Git's three-dot syntax:
-
-| Options | Comparison |
-| --- | --- |
-| no `--base` or `--head` | `HEAD` versus the current working tree |
-| `--base BASE` | `BASE...HEAD` |
-| `--base BASE --head HEAD` | `BASE...HEAD` |
-
-`--diff-file` reads the supplied unified diff instead of inspecting a
-repository. Reports are always printed to the terminal; `--output` writes the
-same report to a file as well.
+Run `mergeradar analyze --help` for all options including `--repo`, `--head`,
+`--verbose`, and `--format markdown` (the default).
 
 ## How Analysis Works
 
@@ -130,7 +75,7 @@ MergeRadar:
 
 1. Loads changed file paths, statuses, additions, and deletions.
 2. Classifies each path as application code, authentication, API, database,
-   infrastructure, configuration, tests, documentation, or unknown.
+   dependencies, infrastructure, configuration, tests, documentation, or unknown.
 3. Builds context about the categories, top-level components, and total churn.
 4. Evaluates deterministic risk and stabilizer rules.
 5. Renders the resulting score, evidence gaps, recommendations, and changed
@@ -162,23 +107,17 @@ Negative stabilizer scores cannot reduce the final score below zero.
 | Multiple top-level components changed | +2 | At least three top-level paths changed |
 | Docs-only change | -2 | Every changed file is documentation |
 | Tests-only change | -1 | Every changed file is a test |
+| Lockfile-only change | -3 | Every changed file is a dependency lockfile (e.g. `package-lock.json`, `poetry.lock`) |
 
 Path classification is heuristic and case-insensitive. Rules inspect filenames,
 extensions, and path segments; they do not parse source code.
 
 ## Sample Output
 
-Running:
-
-```bash
-mergeradar analyze --diff-file samples/auth-change.diff
-```
-
-produces a report beginning with:
+Running `mergeradar analyze --diff-file samples/auth-change.diff` produces a
+report that starts with:
 
 ```markdown
-# MergeRadar Report
-
 ## Risk Level
 **High** (score: 8)
 
@@ -199,42 +138,20 @@ recommended checks, and changed files grouped by category.
 
 ## Development
 
-Install the development dependencies as shown above, then run the test suite:
-
 ```bash
-pytest
+pytest                              # run the test suite
+ruff check src/ tests/              # lint
+python -m mergeradar --help         # CLI smoke test
 ```
 
-For a quick end-to-end CLI smoke test, analyze the included auth-change sample:
-
-```bash
-python -m mergeradar analyze --diff-file samples/auth-change.diff --format json
-```
-
-The test suite covers CLI output, diff loading, path classification, and
-representative scoring behavior. Sample diffs are available in `samples/` for
-manual CLI checks. Ruff is configured in `pyproject.toml` for formatting and
-linting when working on code changes.
-
-## Limitations
-
-- Analysis is path-heuristic based, not AST-aware.
-- Unified diff parsing is intentionally simple.
-- Untracked files are not included when analyzing a local working tree.
-- Recommendations are deterministic and generic rather than repository-specific.
-- Risk scoring thresholds are configurable via `--check`; classification keywords are not yet user-configurable.
+Sample diffs for manual testing are in the `samples/` directory.
 
 ## Roadmap
 
-### v0.2
-
-- GitHub Action
-- pull request comment mode
-- CODEOWNERS awareness
-- custom configuration file
-
-### v0.3
-
-- optional LLM-generated narrative summaries layered on deterministic signals
-- richer ownership and runbook checks
-- repository-specific rule tuning
+- **Configurable classification** — Allow users to extend keyword sets and
+  categories via a config file.
+- **SARIF output** — `--format sarif` for GitHub Advanced Security integration.
+- **Dependency walking** — Parse imports to better measure the blast radius.
+- **PR annotations** — Post inline comments on changed lines for triggered rules.
+- **Custom rules DSL** — Define rules in YAML without Python.
+- **Historical scoring** — Track scores across commits to detect risk creep.

@@ -23,7 +23,6 @@ def test_head_without_base_is_rejected() -> None:
     assert "--head requires --base" in result.stdout
 
 
-
 def test_check_below_threshold_passes() -> None:
     result = runner.invoke(app, ["analyze", "--diff-file", "samples/auth-change.diff", "--format", "json", "--check", "9"])
 
