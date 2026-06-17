@@ -7,6 +7,7 @@ from mergeradar.models import TriggeredRule
 RECOMMENDATIONS_BY_RULE = {
     "db.migration_changed": "Validate the migration against a staging or snapshot dataset before deploy.",
     "auth.path_touched": "Verify login, session, token refresh, and permission-protected flows.",
+    "deps.changed": "Review dependency diffs for known-vulnerability or breaking-change risk, and verify lockfile integrity.",
     "infra.config_changed": "Confirm deployment config and environment variables remain compatible.",
     "api.surface_changed": "Check backward compatibility for API consumers and regenerate any API docs if needed.",
     "config.changed": "Review config defaults, secrets, and rollout safety across environments.",

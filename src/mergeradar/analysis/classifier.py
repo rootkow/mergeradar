@@ -10,6 +10,8 @@ from mergeradar.utils.patterns import (
     CODE_EXTENSIONS,
     CONFIG_EXTENSIONS,
     CONFIG_KEYWORDS,
+    DEP_FILENAMES,
+    DEP_KEYWORDS,
     DOC_EXTENSIONS,
     INFRA_FILENAMES,
     INFRA_KEYWORDS,
@@ -21,6 +23,7 @@ from mergeradar.utils.patterns import (
 
 TOKEN_RE = re.compile(r"[^a-z0-9]+")
 NORMALIZED_INFRA_FILENAMES = {name.lower() for name in INFRA_FILENAMES}
+NORMALIZED_DEP_FILENAMES = {name.lower() for name in DEP_FILENAMES}
 
 
 def _matches_path_keyword(path: str, keywords: set[str]) -> bool:
@@ -62,6 +65,9 @@ def classify_file(path: str) -> str:
 
     if filename in NORMALIZED_INFRA_FILENAMES or _matches_path_keyword(path, INFRA_KEYWORDS):
         return "infra"
+
+    if filename.lower() in NORMALIZED_DEP_FILENAMES or _matches_path_keyword(path, DEP_KEYWORDS):
+        return "deps"
 
     if suffix in CONFIG_EXTENSIONS or _matches_path_keyword(path, CONFIG_KEYWORDS):
         return "config"

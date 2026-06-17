@@ -38,6 +38,7 @@ class AnalysisContext:
     has_config_changes: bool
     has_auth_changes: bool
     has_api_changes: bool
+    has_dep_changes: bool
     total_files_changed: int
     total_additions: int
     total_deletions: int

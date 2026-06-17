@@ -31,6 +31,25 @@ def test_risky_change_without_tests_is_medium_or_higher() -> None:
     assert any(rule.id == "evidence.no_tests_for_risky_change" for rule in report.triggered_rules)
 
 
+def test_dep_change_triggers_deps_rule() -> None:
+    changed_files = enrich_changed_files(
+        [
+            ChangedFile(
+                path="requirements.txt",
+                old_path=None,
+                status="M",
+                additions=3,
+                deletions=1,
+            ),
+        ]
+    )
+    context = build_context(repo_path=".", changed_files=changed_files)
+    report = score_context(context)
+
+    assert report.score >= 2
+    assert any(rule.id == "deps.changed" for rule in report.triggered_rules)
+
+
 def test_docs_only_change_reduces_risk() -> None:
     changed_files = enrich_changed_files(
         [
