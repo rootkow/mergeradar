@@ -36,7 +36,9 @@ def test_rename_keeps_numstat_churn() -> None:
         ("deleted file mode 100644", "D"),
     ],
 )
-def test_saved_diff_detects_file_status(tmp_path: Path, metadata: str, expected_status: str) -> None:
+def test_saved_diff_detects_file_status(
+    tmp_path: Path, metadata: str, expected_status: str
+) -> None:
     diff_file = tmp_path / "change.diff"
     diff_file.write_text(
         "\n".join(

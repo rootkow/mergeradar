@@ -3,20 +3,15 @@ from __future__ import annotations
 import re
 from pathlib import PurePosixPath
 
+from mergeradar.config import MergeRadarConfig
 from mergeradar.models import ChangedFile
 from mergeradar.utils.patterns import (
-    API_KEYWORDS,
-    AUTH_KEYWORDS,
     CODE_EXTENSIONS,
     CONFIG_EXTENSIONS,
-    CONFIG_KEYWORDS,
     DEP_FILENAMES,
-    DEP_KEYWORDS,
     DOC_EXTENSIONS,
     INFRA_FILENAMES,
-    INFRA_KEYWORDS,
-    MIGRATION_KEYWORDS,
-    TEST_KEYWORDS,
+    build_keyword_map,
     normalized_parts,
     top_level_component,
 )
@@ -37,7 +32,7 @@ def _matches_path_keyword(path: str, keywords: set[str]) -> bool:
     for keyword in keywords:
         normalized_keyword = keyword.lower()
         if "/" in normalized_keyword:
-            if normalized_keyword in joined:
+            if joined == normalized_keyword or joined.startswith(f"{normalized_keyword}/"):
                 return True
         elif "." in normalized_keyword:
             if filename == normalized_keyword:
@@ -48,35 +43,38 @@ def _matches_path_keyword(path: str, keywords: set[str]) -> bool:
     return False
 
 
-def classify_file(path: str) -> tuple[str, str]:
+def classify_file(path: str, config: MergeRadarConfig | None = None) -> tuple[str, str]:
     """Return (category, reason) inferred from a file path."""
 
+    keyword_map = build_keyword_map(config.keywords if config is not None else None)
     parts = normalized_parts(path)
     filename = parts[-1] if parts else ""
     suffix = PurePosixPath(filename).suffix.lower()
-    if _matches_path_keyword(path, MIGRATION_KEYWORDS):
+    if _matches_path_keyword(path, keyword_map["database"]):
         return ("database", "path contains migration-related keyword")
 
     if "docs" in parts or suffix in DOC_EXTENSIONS or filename.lower() == "readme.md":
         return ("docs", "documentation file matched by path or extension")
 
-    if _matches_path_keyword(path, TEST_KEYWORDS):
+    if _matches_path_keyword(path, keyword_map["tests"]):
         return ("tests", "path contains test-related keyword")
 
-    if filename in NORMALIZED_INFRA_FILENAMES or _matches_path_keyword(path, INFRA_KEYWORDS):
+    if filename in NORMALIZED_INFRA_FILENAMES or _matches_path_keyword(path, keyword_map["infra"]):
         return ("infra", "infrastructure or deployment file matched")
 
-    if filename.lower() in NORMALIZED_DEP_FILENAMES or _matches_path_keyword(path, DEP_KEYWORDS):
+    if filename.lower() in NORMALIZED_DEP_FILENAMES or _matches_path_keyword(
+        path, keyword_map["deps"]
+    ):
         return ("deps", "dependency or package manifest file matched")
 
-    if suffix in CONFIG_EXTENSIONS or _matches_path_keyword(path, CONFIG_KEYWORDS):
+    if suffix in CONFIG_EXTENSIONS or _matches_path_keyword(path, keyword_map["config"]):
         return ("config", "configuration file matched by extension or keyword")
 
     if suffix in CODE_EXTENSIONS:
-        if _matches_path_keyword(path, AUTH_KEYWORDS):
+        if _matches_path_keyword(path, keyword_map["auth"]):
             return ("auth", "path contains auth-related keyword")
 
-        if _matches_path_keyword(path, API_KEYWORDS):
+        if _matches_path_keyword(path, keyword_map["api"]):
             return ("api", "path contains API-related keyword")
 
         return ("app", "application source code file")
@@ -84,7 +82,9 @@ def classify_file(path: str) -> tuple[str, str]:
     return ("unknown", "unrecognized file type")
 
 
-def enrich_changed_files(changed_files: list[ChangedFile]) -> list[ChangedFile]:
+def enrich_changed_files(
+    changed_files: list[ChangedFile], config: MergeRadarConfig | None = None
+) -> list[ChangedFile]:
     """Add classification metadata to changed files in place.
 
     Args:
@@ -95,7 +95,7 @@ def enrich_changed_files(changed_files: list[ChangedFile]) -> list[ChangedFile]:
     """
 
     for changed_file in changed_files:
-        category, reason = classify_file(changed_file.path)
+        category, reason = classify_file(changed_file.path, config=config)
         changed_file.category = category
         changed_file.classification_reason = reason
         changed_file.top_level_component = top_level_component(changed_file.path)

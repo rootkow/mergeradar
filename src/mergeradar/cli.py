@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import tomllib
 from pathlib import Path
 from typing import Annotated
 
@@ -13,6 +14,7 @@ from rich.table import Table
 from mergeradar.analysis.classifier import enrich_changed_files
 from mergeradar.analysis.context_builder import build_context
 from mergeradar.analysis.scorer import score_context
+from mergeradar.config import ConfigError, load_config
 from mergeradar.git.diff_loader import (
     DiffLoaderError,
     load_changed_files,
@@ -32,14 +34,32 @@ def main() -> None:
 
 @app.command()
 def analyze(
-    repo: Annotated[Path, typer.Option("--repo", help="Path to the local git repository.")] = Path("."),
+    repo: Annotated[Path, typer.Option("--repo", help="Path to the local git repository.")] = Path(
+        "."
+    ),
     base: Annotated[str | None, typer.Option("--base", help="Base ref to diff from.")] = None,
     head: Annotated[str | None, typer.Option("--head", help="Head ref to diff to.")] = None,
-    diff_file: Annotated[Path | None, typer.Option("--diff-file", help="Path to a saved unified diff file.")] = None,
-    output: Annotated[Path | None, typer.Option("--output", help="Optional file path to write the report.")] = None,
-    output_format: Annotated[str, typer.Option("--format", help="Output format: markdown or json.")] = "markdown",
-    check: Annotated[int | None, typer.Option("--check", help="Exit non-zero if risk score meets or exceeds this threshold.")] = None,
-    verbose: Annotated[bool, typer.Option("--verbose", help="Print extra debugging context.")] = False,
+    diff_file: Annotated[
+        Path | None, typer.Option("--diff-file", help="Path to a saved unified diff file.")
+    ] = None,
+    config: Annotated[
+        Path | None, typer.Option("--config", help="Path to a .mergeradar.toml config file.")
+    ] = None,
+    output: Annotated[
+        Path | None, typer.Option("--output", help="Optional file path to write the report.")
+    ] = None,
+    output_format: Annotated[
+        str, typer.Option("--format", help="Output format: markdown or json.")
+    ] = "markdown",
+    check: Annotated[
+        int | None,
+        typer.Option(
+            "--check", help="Exit non-zero if risk score meets or exceeds this threshold."
+        ),
+    ] = None,
+    verbose: Annotated[
+        bool, typer.Option("--verbose", help="Print extra debugging context.")
+    ] = False,
 ) -> None:
     """Analyze a repository diff or saved diff and render its risk report."""
 
@@ -54,9 +74,18 @@ def analyze(
             changed_files = load_changed_files(repo_path=repo, base=base, head=head)
             repo_label = str(repo.resolve())
 
-        changed_files = enrich_changed_files(changed_files)
+        try:
+            cfg = load_config(path=config, repo_path=repo)
+        except tomllib.TOMLDecodeError as exc:
+            console.print(f"[red]Failed to parse config file:[/red] {exc}")
+            raise typer.Exit(code=1) from exc
+        except ConfigError as exc:
+            console.print(f"[red]Invalid config file:[/red] {exc}")
+            raise typer.Exit(code=1) from exc
+
+        changed_files = enrich_changed_files(changed_files, config=cfg)
         context = build_context(repo_path=repo_label, changed_files=changed_files)
-        report = score_context(context)
+        report = score_context(context, config=cfg)
 
         if output_format not in {"markdown", "json"}:
             console.print("[red]Unsupported format. Use 'markdown' or 'json'.[/red]")

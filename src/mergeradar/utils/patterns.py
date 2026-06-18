@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import PurePosixPath
 
-# TODO:
-# - Make these configurable (e.g. YAML file within the target repo)
 CODE_EXTENSIONS = {".py", ".ts", ".js", ".go", ".java", ".rs", ".kt", ".cs"}
 DOC_EXTENSIONS = {".md", ".rst", ".adoc"}
 CONFIG_EXTENSIONS = {".yaml", ".yml", ".json", ".toml", ".ini", ".env", ".cfg"}
@@ -47,6 +45,35 @@ LOCKFILE_FILENAMES = {
     "poetry.lock",
     "yarn.lock",
 }
+
+CATEGORY_KEYWORD_MAP: dict[str, set[str]] = {
+    "auth": AUTH_KEYWORDS,
+    "api": API_KEYWORDS,
+    "database": MIGRATION_KEYWORDS,
+    "tests": TEST_KEYWORDS,
+    "infra": INFRA_KEYWORDS,
+    "config": CONFIG_KEYWORDS,
+    "deps": DEP_KEYWORDS,
+}
+
+
+def build_keyword_map(overrides: dict[str, list[str]] | None = None) -> dict[str, set[str]]:
+    """Return per-run keyword sets with user overrides merged in."""
+
+    keyword_map = {
+        category: {keyword.lower() for keyword in keywords}
+        for category, keywords in CATEGORY_KEYWORD_MAP.items()
+    }
+
+    if overrides is None:
+        return keyword_map
+
+    for category, extra in overrides.items():
+        target = keyword_map.get(category)
+        if target is not None:
+            target.update(keyword.lower() for keyword in extra)
+
+    return keyword_map
 
 
 def normalized_parts(path: str) -> tuple[str, ...]:

@@ -64,7 +64,9 @@ def render_markdown(report: RiskReport) -> str:
     for category, files in grouped.items():
         lines.append(f"### {CATEGORY_HEADINGS.get(category, category.title())}")
         for changed_file in files:
-            change_summary = f"{changed_file.status}, +{changed_file.additions}/-{changed_file.deletions}"
+            change_summary = (
+                f"{changed_file.status}, +{changed_file.additions}/-{changed_file.deletions}"
+            )
             lines.append(f"- `{changed_file.path}` ({change_summary})")
 
         lines.append("")
