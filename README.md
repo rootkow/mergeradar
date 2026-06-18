@@ -61,13 +61,16 @@ mergeradar analyze --diff-file samples/auth-change.diff
 
 # Output as JSON and exit non-zero if score >= 6 (CI gate)
 mergeradar analyze --format json --output report.json --check 6
+
+# Output as SARIF for GitHub Advanced Security integration
+mergeradar analyze --format sarif --output report.sarif
 ```
 
 The `--check` threshold can also be set via the `MERGEDARAR_CHECK` environment
 variable. The CLI flag takes precedence.
 
 Run `mergeradar analyze --help` for all options including `--repo`, `--head`,
-`--verbose`, and `--format markdown` (the default).
+`--verbose`, and `--format` (markdown, json, or sarif).
 
 ## How Analysis Works
 
@@ -180,7 +183,6 @@ Sample diffs for manual testing are in the `samples/` directory.
 
 ## Roadmap
 
-- **SARIF output** — `--format sarif` for GitHub Advanced Security integration.
 - **Dependency walking** — Parse imports to better measure the blast radius.
 - **PR annotations** — Post inline comments on changed lines for triggered rules.
 - **Custom rules DSL** — Define rules in YAML without Python.

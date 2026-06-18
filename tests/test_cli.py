@@ -184,6 +184,19 @@ def test_output_file_writes_json(tmp_path: Path) -> None:
     assert report["risk_level"] == "Low"
 
 
+def test_sarif_format_is_valid_sarif() -> None:
+    result = runner.invoke(
+        app, ["analyze", "--diff-file", "samples/auth-change.diff", "--format", "sarif"]
+    )
+
+    assert result.exit_code == 0
+    doc = json.loads(result.stdout)
+    assert doc["version"] == "2.1.0"
+    assert doc["runs"][0]["tool"]["driver"]["name"] == "MergeRadar"
+    assert "results" in doc["runs"][0]
+    assert doc["runs"][0]["properties"]["riskLevel"] == "High"
+
+
 def test_non_git_repo_rejected(tmp_path: Path) -> None:
     result = runner.invoke(app, ["analyze", "--repo", str(tmp_path)])
     assert result.exit_code == 3

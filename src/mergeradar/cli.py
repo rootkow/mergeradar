@@ -22,6 +22,7 @@ from mergeradar.git.diff_loader import (
 )
 from mergeradar.git.repo_inspector import is_git_repo
 from mergeradar.renderers.markdown import render_markdown
+from mergeradar.renderers.sarif import render_sarif
 
 app = typer.Typer(help="Blast-radius and risk analysis for pull requests.")
 console = Console()
@@ -49,7 +50,10 @@ def analyze(
         Path | None, typer.Option("--output", help="Optional file path to write the report.")
     ] = None,
     output_format: Annotated[
-        str, typer.Option("--format", help="Output format: markdown or json.")
+        str,
+        typer.Option(
+            "--format", help="Output format: markdown, json, or sarif."
+        ),
     ] = "markdown",
     check: Annotated[
         int | None,
@@ -87,15 +91,18 @@ def analyze(
         context = build_context(repo_path=repo_label, changed_files=changed_files)
         report = score_context(context, config=cfg)
 
-        if output_format not in {"markdown", "json"}:
-            console.print("[red]Unsupported format. Use 'markdown' or 'json'.[/red]")
+        if output_format not in {"markdown", "json", "sarif"}:
+            console.print(
+                "[red]Unsupported format. Use 'markdown', 'json', or 'sarif'.[/red]"
+            )
             raise typer.Exit(code=2)
 
-        rendered = (
-            render_markdown(report)
-            if output_format == "markdown"
-            else json.dumps(report.to_dict(), indent=2, sort_keys=True)
-        )
+        if output_format == "markdown":
+            rendered = render_markdown(report)
+        elif output_format == "sarif":
+            rendered = render_sarif(report)
+        else:
+            rendered = json.dumps(report.to_dict(), indent=2, sort_keys=True)
 
         if output is not None:
             output.write_text(rendered, encoding="utf-8")
