@@ -43,6 +43,7 @@ class AnalysisContext:
     total_files_changed: int
     total_additions: int
     total_deletions: int
+    risky_categories: set[str] = field(default_factory=set)
 
 
 @dataclass(slots=True)

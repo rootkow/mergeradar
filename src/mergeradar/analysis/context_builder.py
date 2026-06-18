@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from mergeradar.config import MergeRadarConfig
 from mergeradar.models import AnalysisContext, ChangedFile
 
-# TODO: Configurationize this
-RISKY_CATEGORIES = {"database", "auth", "infra", "config", "api", "deps"}
 
-
-def build_context(repo_path: str, changed_files: list[ChangedFile]) -> AnalysisContext:
+def build_context(
+    repo_path: str,
+    changed_files: list[ChangedFile],
+    config: MergeRadarConfig | None = None,
+) -> AnalysisContext:
     """Build aggregate analysis metadata from classified changed files."""
 
     categories_touched = {changed_file.category for changed_file in changed_files}
@@ -16,6 +18,11 @@ def build_context(repo_path: str, changed_files: list[ChangedFile]) -> AnalysisC
         if changed_file.top_level_component is not None
     }
 
+    risky_categories = (
+        config.risky_categories
+        if config is not None
+        else {"database", "auth", "infra", "config", "api", "deps"}
+    )
     return AnalysisContext(
         repo_path=repo_path,
         changed_files=changed_files,
@@ -32,10 +39,12 @@ def build_context(repo_path: str, changed_files: list[ChangedFile]) -> AnalysisC
         total_files_changed=len(changed_files),
         total_additions=sum(changed_file.additions for changed_file in changed_files),
         total_deletions=sum(changed_file.deletions for changed_file in changed_files),
+        risky_categories=risky_categories,
     )
 
 
 def has_risky_changes(context: AnalysisContext) -> bool:
     """Return whether the context contains any risk-sensitive category."""
 
-    return any(category in RISKY_CATEGORIES for category in context.categories_touched)
+    risky = context.risky_categories
+    return any(category in risky for category in context.categories_touched)

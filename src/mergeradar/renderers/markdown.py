@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from collections import defaultdict
 
+from mergeradar.config import MergeRadarConfig
 from mergeradar.models import ChangedFile, RiskReport
 
-# TODO: Configurationize this
 CATEGORY_HEADINGS = {
     "app": "Application Code",
     "auth": "Authentication / Authorization",
@@ -19,9 +19,7 @@ CATEGORY_HEADINGS = {
 }
 
 
-# TODO: Consider allowing the user to customize the Markdown output, e.g. by providing a template or
-# configuration options for which sections to include, formatting styles, etc.
-def render_markdown(report: RiskReport) -> str:
+def render_markdown(report: RiskReport, config: MergeRadarConfig | None = None) -> str:
     """Render a risk report as Markdown with a trailing newline."""
 
     lines: list[str] = []
@@ -61,8 +59,9 @@ def render_markdown(report: RiskReport) -> str:
     lines.append("## Changed Files")
     grouped = _group_changed_files(report.changed_files)
 
+    headings = {**CATEGORY_HEADINGS, **(config.category_headings if config else {})}
     for category, files in grouped.items():
-        lines.append(f"### {CATEGORY_HEADINGS.get(category, category.title())}")
+        lines.append(f"### {headings.get(category, category.title())}")
         for changed_file in files:
             change_summary = (
                 f"{changed_file.status}, +{changed_file.additions}/-{changed_file.deletions}"

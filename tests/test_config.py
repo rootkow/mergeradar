@@ -53,14 +53,14 @@ def test_parse_keywords_skips_non_dict() -> None:
 
 def test_parse_rule_disabled() -> None:
     cfg = _parse_config({"rules": {"db.migration_changed": {"enabled": False}}})
-    assert cfg.rules["db.migration_changed"].enabled is False
-    assert cfg.rules["db.migration_changed"].score is None
+    assert cfg.rule_overrides["db.migration_changed"].enabled is False
+    assert cfg.rule_overrides["db.migration_changed"].score is None
 
 
 def test_parse_rule_score_override() -> None:
     cfg = _parse_config({"rules": {"db.migration_changed": {"score": 5}}})
-    assert cfg.rules["db.migration_changed"].enabled is True
-    assert cfg.rules["db.migration_changed"].score == 5
+    assert cfg.rule_overrides["db.migration_changed"].enabled is True
+    assert cfg.rule_overrides["db.migration_changed"].score == 5
 
 
 def test_parse_rule_rejects_non_integer_score() -> None:
@@ -75,10 +75,10 @@ def test_parse_rule_rejects_non_boolean_enabled() -> None:
 
 def test_parse_rule_both() -> None:
     cfg = _parse_config({"rules": {"stability.lockfile_only": {"enabled": False, "score": -1}}})
-    assert cfg.rules["stability.lockfile_only"].enabled is False
-    assert cfg.rules["stability.lockfile_only"].score == -1
+    assert cfg.rule_overrides["stability.lockfile_only"].enabled is False
+    assert cfg.rule_overrides["stability.lockfile_only"].score == -1
 
 
 def test_parse_rules_skips_non_dict() -> None:
     cfg = _parse_config({"rules": "invalid"})
-    assert cfg.rules == {}
+    assert cfg.rule_overrides == {}

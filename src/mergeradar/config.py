@@ -13,9 +13,23 @@ class RuleOverride:
 
 
 @dataclass(slots=True)
+class CustomRuleDef:
+    id: str
+    title: str
+    score: int
+    category: str
+    reason: str
+
+
+@dataclass(slots=True)
 class MergeRadarConfig:
     keywords: dict[str, list[str]] = field(default_factory=dict)
-    rules: dict[str, RuleOverride] = field(default_factory=dict)
+    rule_overrides: dict[str, RuleOverride] = field(default_factory=dict)
+    risky_categories: set[str] = field(
+        default_factory=lambda: {"database", "auth", "infra", "config", "api", "deps"}
+    )
+    category_headings: dict[str, str] = field(default_factory=dict)
+    custom_rules: list[CustomRuleDef] = field(default_factory=list)
 
 
 class ConfigError(ValueError):
@@ -40,6 +54,18 @@ def load_config(path: Path | None = None, repo_path: Path = Path(".")) -> MergeR
             return _parse_config(data)
 
     return None
+
+
+def _parse_str_list(raw: object) -> set[str]:
+    if isinstance(raw, list):
+        return {str(item) for item in raw}
+    return set()
+
+
+def _parse_str_dict(raw: object) -> dict[str, str]:
+    if isinstance(raw, dict):
+        return {str(k): str(v) for k, v in raw.items()}
+    return {}
 
 
 def _parse_config(data: dict[str, Any]) -> MergeRadarConfig:
@@ -67,4 +93,38 @@ def _parse_config(data: dict[str, Any]) -> MergeRadarConfig:
                     score=score,
                 )
 
-    return MergeRadarConfig(keywords=keywords, rules=rules)
+    custom_rules: list[CustomRuleDef] = []
+    custom_raw = data.get("custom_rules", {})
+    if isinstance(custom_raw, dict):
+        for rule_id, rule_data in custom_raw.items():
+            rule_id = str(rule_id)
+            if isinstance(rule_data, dict):
+                title = rule_data.get("title")
+                score = rule_data.get("score")
+                category = rule_data.get("category")
+                reason = rule_data.get("reason")
+                if not isinstance(title, str):
+                    raise ConfigError(f"Custom rule '{rule_id}' must have a string title.")
+                if not isinstance(score, int) or isinstance(score, bool):
+                    raise ConfigError(f"Custom rule '{rule_id}' score must be an integer.")
+                if not isinstance(category, str):
+                    raise ConfigError(f"Custom rule '{rule_id}' category must be a string.")
+                if not isinstance(reason, str):
+                    raise ConfigError(f"Custom rule '{rule_id}' reason must be a string.")
+                custom_rules.append(
+                    CustomRuleDef(
+                        id=rule_id,
+                        title=title,
+                        score=score,
+                        category=category,
+                        reason=reason,
+                    )
+                )
+
+    return MergeRadarConfig(
+        keywords=keywords,
+        rule_overrides=rules,
+        risky_categories=_parse_str_list(data.get("risky_categories")),
+        category_headings=_parse_str_dict(data.get("headings")),
+        custom_rules=custom_rules,
+    )

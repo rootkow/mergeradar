@@ -108,13 +108,13 @@ def test_docs_only_change_reduces_risk() -> None:
 
 
 def test_get_rules_disabled_via_config() -> None:
-    cfg = MergeRadarConfig(rules={"db.migration_changed": RuleOverride(enabled=False)})
+    cfg = MergeRadarConfig(rule_overrides={"db.migration_changed": RuleOverride(enabled=False)})
     rules = get_rules(cfg)
     assert all(r.id != "db.migration_changed" for r in rules)
 
 
 def test_get_rules_score_override() -> None:
-    cfg = MergeRadarConfig(rules={"db.migration_changed": RuleOverride(score=5)})
+    cfg = MergeRadarConfig(rule_overrides={"db.migration_changed": RuleOverride(score=5)})
     rules = get_rules(cfg)
     db_rule = next(r for r in rules if r.id == "db.migration_changed")
     assert db_rule.score == 5
@@ -122,7 +122,7 @@ def test_get_rules_score_override() -> None:
 
 
 def test_score_override_affects_report() -> None:
-    cfg = MergeRadarConfig(rules={"db.migration_changed": RuleOverride(score=5)})
+    cfg = MergeRadarConfig(rule_overrides={"db.migration_changed": RuleOverride(score=5)})
     changed_files = enrich_changed_files(
         [
             ChangedFile(
@@ -142,7 +142,7 @@ def test_score_override_affects_report() -> None:
 
 
 def test_disabled_rule_not_in_report() -> None:
-    cfg = MergeRadarConfig(rules={"stability.lockfile_only": RuleOverride(enabled=False)})
+    cfg = MergeRadarConfig(rule_overrides={"stability.lockfile_only": RuleOverride(enabled=False)})
     changed_files = enrich_changed_files(
         [
             ChangedFile(

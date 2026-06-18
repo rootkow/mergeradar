@@ -64,13 +64,19 @@ mergeradar analyze --format json --output report.json --check 6
 
 # Output as SARIF for GitHub Advanced Security integration
 mergeradar analyze --format sarif --output report.sarif
+
+# Output GitHub Actions annotations for inline PR feedback
+mergeradar analyze --format annotations
+
+# Track risk score trend across runs
+mergeradar analyze --history .mergeradar-history.json
 ```
 
 The `--check` threshold can also be set via the `MERGEDARAR_CHECK` environment
 variable. The CLI flag takes precedence.
 
 Run `mergeradar analyze --help` for all options including `--repo`, `--head`,
-`--verbose`, and `--format` (markdown, json, or sarif).
+`--verbose`, `--history`, and `--format` (markdown, json, sarif, or annotations).
 
 ## How Analysis Works
 
@@ -111,6 +117,8 @@ Negative stabilizer scores cannot reduce the final score below zero.
 | Docs-only change | -2 | Every changed file is documentation |
 | Tests-only change | -1 | Every changed file is a test |
 | Lockfile-only change | -3 | Every changed file is a dependency lockfile (e.g. `package-lock.json`, `poetry.lock`) |
+| Cross-dependencies between changed files | +2 | Changed Python files import from other changed files (tight coupling) |
+| Wide blast radius from internal imports | +1 | Changed files import many distinct internal modules |
 
 Path classification is heuristic and case-insensitive. Rules inspect filenames,
 extensions, and path segments; they do not parse source code.
@@ -146,6 +154,39 @@ score = -1
 Rules can be disabled entirely or have their score overridden. Run
 `mergeradar analyze` with `--verbose` to see the rule IDs for each triggered
 signal.
+
+### Custom rules
+
+Define new category-based rules without writing Python:
+
+```toml
+[custom_rules]
+"custom.secret_scanner" = { title = "Secret scanner changed", score = 3, category = "infra", reason = "Secret scanning configuration modified in" }
+"custom.critical_path" = { title = "Critical path modified", score = 2, category = "app", reason = "Application core code changed in" }
+```
+
+Custom rules trigger when files classified into the given category are
+changed. Combine with custom keywords to match project-specific paths.
+
+### Risky categories
+
+```toml
+risky_categories = ["database", "auth", "infra", "config", "api", "deps"]
+```
+
+Controls which categories are considered "risky" for evidence rules (missing
+tests or documentation). Defaults to the six categories above.
+
+### Category headings
+
+```toml
+[headings]
+security = "Security"
+performance = "Performance"
+```
+
+Overrides the section headings used in Markdown reports for each
+classification category.
 
 ## Sample Output
 
@@ -183,7 +224,21 @@ Sample diffs for manual testing are in the `samples/` directory.
 
 ## Roadmap
 
-- **Dependency walking** — Parse imports to better measure the blast radius.
-- **PR annotations** — Post inline comments on changed lines for triggered rules.
-- **Custom rules DSL** — Define rules in YAML without Python.
-- **Historical scoring** — Track scores across commits to detect risk creep.
+### Implemented
+
+- **Dependency walking** — Parses imports from changed Python files and
+  detects cross-dependencies and wide blast radius. See `rules/dependency.py`.
+- **PR annotations** — `--format annotations` renders GitHub Actions
+  workflow command annotations for inline PR feedback.
+- **Custom rules DSL** — Define category-based rules in `.mergeradar.toml`
+  under `[custom_rules]`. No Python required.
+- **Historical scoring** — `--history <path>` tracks scores across runs
+  and reports the risk trend (`increasing`, `decreasing`, `stable`) in report
+  metadata.
+
+### Further out
+
+- **Path-pattern custom rules** — Match files by glob or regex in custom rules.
+- **Inbound dependency scanning** — Count files that _import from_ changed
+  files, not just what changed files import.
+- **Check run API integration** — Post SARIF directly to GitHub's Checks API.

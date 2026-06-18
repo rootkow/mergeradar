@@ -21,8 +21,10 @@ from mergeradar.git.diff_loader import (
     load_changed_files_from_diff_file,
 )
 from mergeradar.git.repo_inspector import is_git_repo
+from mergeradar.renderers.annotations import render_annotations
 from mergeradar.renderers.markdown import render_markdown
 from mergeradar.renderers.sarif import render_sarif
+from mergeradar.utils.history import append_history, compute_trend, load_history
 
 app = typer.Typer(help="Blast-radius and risk analysis for pull requests.")
 console = Console()
@@ -49,10 +51,14 @@ def analyze(
     output: Annotated[
         Path | None, typer.Option("--output", help="Optional file path to write the report.")
     ] = None,
+    history_file: Annotated[
+        Path | None,
+        typer.Option("--history", help="Path to a history JSON file for tracking score trends."),
+    ] = None,
     output_format: Annotated[
         str,
         typer.Option(
-            "--format", help="Output format: markdown, json, or sarif."
+            "--format", help="Output format: markdown, json, sarif, or annotations."
         ),
     ] = "markdown",
     check: Annotated[
@@ -88,19 +94,39 @@ def analyze(
             raise typer.Exit(code=1) from exc
 
         changed_files = enrich_changed_files(changed_files, config=cfg)
-        context = build_context(repo_path=repo_label, changed_files=changed_files)
+        context = build_context(repo_path=repo_label, changed_files=changed_files, config=cfg)
         report = score_context(context, config=cfg)
 
-        if output_format not in {"markdown", "json", "sarif"}:
+        if output_format not in {"markdown", "json", "sarif", "annotations"}:
             console.print(
-                "[red]Unsupported format. Use 'markdown', 'json', or 'sarif'.[/red]"
+                "[red]Unsupported format. Use 'markdown', 'json', 'sarif', or 'annotations'.[/red]"
             )
             raise typer.Exit(code=2)
 
+        if history_file is not None:
+            prev = load_history(history_file)
+            previous_score = prev[-1].score if prev else None
+            trend = compute_trend(report.score, previous_score)
+            report.metadata["risk_trend"] = trend
+            commit = ""
+            if not diff_file:
+                try:
+                    import subprocess
+                    result = subprocess.run(
+                        ["git", "-C", str(repo), "rev-parse", "--short", "HEAD"],
+                        capture_output=True, text=True, timeout=10,
+                    )
+                    commit = result.stdout.strip()
+                except Exception:
+                    pass
+            append_history(history_file, report.score, report.risk_level, commit)
+
         if output_format == "markdown":
-            rendered = render_markdown(report)
+            rendered = render_markdown(report, config=cfg)
         elif output_format == "sarif":
             rendered = render_sarif(report)
+        elif output_format == "annotations":
+            rendered = render_annotations(report)
         else:
             rendered = json.dumps(report.to_dict(), indent=2, sort_keys=True)
 
