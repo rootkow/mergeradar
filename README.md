@@ -112,6 +112,38 @@ Negative stabilizer scores cannot reduce the final score below zero.
 Path classification is heuristic and case-insensitive. Rules inspect filenames,
 extensions, and path segments; they do not parse source code.
 
+## Configuration
+
+Create a `.mergeradar.toml` file in your repository root (or pass `--config`
+with a custom path) to customize keyword matching and rule behavior.
+
+### Custom keywords
+
+```toml
+[keywords]
+# Supported categories: auth, api, database, tests, infra, config, deps.
+infra = ["kustomize", "argocd"]
+database = ["sequelize", "prisma"]
+```
+
+Keywords are matched case-insensitively against path segments and filename
+tokens. A keyword containing a dot is compared against the full filename; a
+keyword containing a slash is matched as a path prefix.
+
+### Rule overrides
+
+```toml
+[rules."db.migration_changed"]
+enabled = false
+
+[rules."stability.lockfile_only"]
+score = -1
+```
+
+Rules can be disabled entirely or have their score overridden. Run
+`mergeradar analyze` with `--verbose` to see the rule IDs for each triggered
+signal.
+
 ## Sample Output
 
 Running `mergeradar analyze --diff-file samples/auth-change.diff` produces a
@@ -148,8 +180,6 @@ Sample diffs for manual testing are in the `samples/` directory.
 
 ## Roadmap
 
-- **Configurable classification** — Allow users to extend keyword sets and
-  categories via a config file.
 - **SARIF output** — `--format sarif` for GitHub Advanced Security integration.
 - **Dependency walking** — Parse imports to better measure the blast radius.
 - **PR annotations** — Post inline comments on changed lines for triggered rules.

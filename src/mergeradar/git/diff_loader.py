@@ -65,7 +65,9 @@ def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
         header_match = DIFF_HEADER_RE.match(raw_line)
         if header_match:
             if current_path is not None:
-                files.append(_build_changed_file(current_path, old_path, status, additions, deletions))
+                files.append(
+                    _build_changed_file(current_path, old_path, status, additions, deletions)
+                )
 
             old_path = header_match.group(1)
             current_path = header_match.group(2)

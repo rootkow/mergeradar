@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from mergeradar.analysis.recommendations import build_missing_evidence, build_recommendations
+from mergeradar.config import MergeRadarConfig
 from mergeradar.models import AnalysisContext, RiskReport, TriggeredRule
 from mergeradar.rules import get_rules
 
@@ -22,18 +23,21 @@ def build_summary(context: AnalysisContext, triggered_rules: list[TriggeredRule]
 
     categories = ", ".join(sorted(context.categories_touched)) or "unknown areas"
     if not triggered_rules:
-        return f"This change touches {categories} with no risk signals triggered by the current rule set."
+        return (
+            f"This change touches {categories} with no risk signals triggered "
+            "by the current rule set."
+        )
 
     strongest = sorted(triggered_rules, key=lambda rule: rule.score, reverse=True)[:3]
     focus = ", ".join(rule.title.lower() for rule in strongest)
     return f"This change touches {categories} and triggered the following main signals: {focus}."
 
 
-def score_context(context: AnalysisContext) -> RiskReport:
+def score_context(context: AnalysisContext, config: MergeRadarConfig | None = None) -> RiskReport:
     """Evaluate all rules and build a complete risk report."""
 
     triggered_rules: list[TriggeredRule] = []
-    for rule in get_rules():
+    for rule in get_rules(config):
         triggered = rule.evaluate(context)
         if triggered is not None:
             triggered_rules.append(triggered)

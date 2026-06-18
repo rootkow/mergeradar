@@ -41,7 +41,11 @@ class CategoryChangedRule(SimpleRule):
     def evaluate(self, context: AnalysisContext) -> TriggeredRule | None:
         """Return a result when the context contains the configured category."""
 
-        paths = [changed_file.path for changed_file in context.changed_files if changed_file.category == self.category]
+        paths = [
+            changed_file.path
+            for changed_file in context.changed_files
+            if changed_file.category == self.category
+        ]
         if not paths:
             return None
 
