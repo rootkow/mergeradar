@@ -106,7 +106,11 @@ def analyze(
             raise typer.Exit(code=2)
 
         if history_file is not None:
-            prev = load_history(history_file)
+            try:
+                prev = load_history(history_file)
+            except ValueError as e:
+                console.print(f"[red]Error: {e}[/red]")
+                raise typer.Exit(code=1) from e
             previous_score = prev[-1].score if prev else None
             trend = compute_trend(report.score, previous_score)
             report.metadata["risk_trend"] = trend

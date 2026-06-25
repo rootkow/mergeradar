@@ -1182,4 +1182,7 @@ obj/
 ####################
 ### USER DEFINED ###
 ####################
-
+# Local scratch, personal planning, etc.
+scratch/
+.agent-scratch/
+*.local.md
