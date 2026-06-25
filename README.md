@@ -1,5 +1,7 @@
 # MergeRadar
 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
 Deterministic blast-radius and risk analysis for pull requests.
 
 MergeRadar analyzes a Git diff or a saved unified diff and produces a Markdown or JSON report
