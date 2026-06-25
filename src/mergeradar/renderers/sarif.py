@@ -5,7 +5,7 @@ from importlib.metadata import version as _pkg_version
 
 from mergeradar.models import RiskReport, TriggeredRule
 
-SARIF_SCHEMA = (
+SARIF_SCHEMA: str = (
     "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/"
     "master/Schemata/sarif-schema-2.1.0.json"
 )

@@ -32,7 +32,11 @@ class MergeRadarConfig:
     custom_rules: list[CustomRuleDef] = field(default_factory=list)
 
 
-class ConfigError(ValueError):
+class MergeRadarError(Exception):
+    """Base exception for MergeRadar errors."""
+
+
+class ConfigError(MergeRadarError):
     """Raised when MergeRadar configuration is invalid."""
 
 
@@ -57,12 +61,16 @@ def load_config(path: Path | None = None, repo_path: Path = Path(".")) -> MergeR
 
 
 def _parse_str_list(raw: object) -> set[str]:
+    """Convert a TOML list value to a set of strings. Returns empty set for non-list input."""
+
     if isinstance(raw, list):
         return {str(item) for item in raw}
     return set()
 
 
 def _parse_str_dict(raw: object) -> dict[str, str]:
+    """Convert a TOML table to a dict of strings. Returns empty dict for non-dict input."""
+
     if isinstance(raw, dict):
         return {str(k): str(v) for k, v in raw.items()}
     return {}
@@ -79,8 +87,8 @@ def _parse_config(data: dict[str, Any]) -> MergeRadarConfig:
     rules: dict[str, RuleOverride] = {}
     rules_raw = data.get("rules", {})
     if isinstance(rules_raw, dict):
-        for rule_id, rule_data in rules_raw.items():
-            rule_id = str(rule_id)
+        for raw_rule_id, rule_data in rules_raw.items():
+            rule_id = str(raw_rule_id)
             if isinstance(rule_data, dict):
                 enabled = rule_data.get("enabled", True)
                 score = rule_data.get("score")
@@ -96,8 +104,8 @@ def _parse_config(data: dict[str, Any]) -> MergeRadarConfig:
     custom_rules: list[CustomRuleDef] = []
     custom_raw = data.get("custom_rules", {})
     if isinstance(custom_raw, dict):
-        for rule_id, rule_data in custom_raw.items():
-            rule_id = str(rule_id)
+        for raw_rule_id, rule_data in custom_raw.items():
+            rule_id = str(raw_rule_id)
             if isinstance(rule_data, dict):
                 title = rule_data.get("title")
                 score = rule_data.get("score")
@@ -124,7 +132,11 @@ def _parse_config(data: dict[str, Any]) -> MergeRadarConfig:
     return MergeRadarConfig(
         keywords=keywords,
         rule_overrides=rules,
-        risky_categories=_parse_str_list(data.get("risky_categories")),
+        risky_categories=(
+            _parse_str_list(data["risky_categories"])
+            if "risky_categories" in data
+            else {"database", "auth", "infra", "config", "api", "deps"}
+        ),
         category_headings=_parse_str_dict(data.get("headings")),
         custom_rules=custom_rules,
     )

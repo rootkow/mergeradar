@@ -44,6 +44,7 @@ def test_invalid_toml_raises(tmp_path: Path) -> None:
 def test_parse_keywords() -> None:
     cfg = _parse_config({"keywords": {"auth": ["sso", "casbin"]}})
     assert cfg.keywords == {"auth": ["sso", "casbin"]}
+    assert cfg.risky_categories == {"database", "auth", "infra", "config", "api", "deps"}
 
 
 def test_parse_keywords_skips_non_dict() -> None:
@@ -82,3 +83,41 @@ def test_parse_rule_both() -> None:
 def test_parse_rules_skips_non_dict() -> None:
     cfg = _parse_config({"rules": "invalid"})
     assert cfg.rule_overrides == {}
+
+
+def test_parse_risky_categories_override() -> None:
+    cfg = _parse_config({"risky_categories": ["auth", "infra"]})
+    assert cfg.risky_categories == {"auth", "infra"}
+
+
+def test_parse_custom_rule_requires_reason() -> None:
+    with pytest.raises(ConfigError, match="reason must be a string"):
+        _parse_config(
+            {
+                "custom_rules": {
+                    "custom.secret_scanner": {
+                        "title": "Secret scanner changed",
+                        "score": 3,
+                        "category": "infra",
+                    }
+                }
+            }
+        )
+
+
+def test_parse_custom_rule_with_reason() -> None:
+    cfg = _parse_config(
+        {
+            "custom_rules": {
+                "custom.secret_scanner": {
+                    "title": "Secret scanner changed",
+                    "score": 3,
+                    "category": "infra",
+                    "reason": "Secret scanner configuration changed in",
+                }
+            }
+        }
+    )
+
+    assert len(cfg.custom_rules) == 1
+    assert cfg.custom_rules[0].reason == "Secret scanner configuration changed in"

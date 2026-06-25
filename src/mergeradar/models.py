@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from pathlib import Path
 from typing import Any
 
 
@@ -87,16 +86,3 @@ class RiskReport:
             "changed_files": [changed_file.to_dict() for changed_file in self.changed_files],
             "metadata": self.metadata,
         }
-
-
-@dataclass(slots=True)
-class AnalyzeOptions:
-    """CLI options for analyzing a repository or saved diff."""
-
-    repo_path: Path
-    base: str | None = None
-    head: str | None = None
-    diff_file: Path | None = None
-    output: Path | None = None
-    output_format: str = "markdown"
-    verbose: bool = False

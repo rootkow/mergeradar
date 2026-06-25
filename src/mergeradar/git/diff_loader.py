@@ -4,6 +4,7 @@ import re
 import subprocess
 from pathlib import Path
 
+from mergeradar.config import MergeRadarError
 from mergeradar.models import ChangedFile
 
 DIFF_HEADER_RE = re.compile(r"^diff --git a/(.+?) b/(.+)$")
@@ -11,7 +12,7 @@ HUNK_RE = re.compile(r"^@@ .+ @@")
 BRACED_RENAME_RE = re.compile(r"^(.*)\{.* => (.*)\}(.*)$")
 
 
-class DiffLoaderError(RuntimeError):
+class DiffLoaderError(MergeRadarError):
     """Raised when a Git diff cannot be loaded or contains no changes."""
 
 
@@ -92,6 +93,19 @@ def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
         if raw_line.startswith("rename to "):
             current_path = raw_line.removeprefix("rename to ")
             status = "R"
+            continue
+
+        if raw_line.startswith("--- /dev/null"):
+            status = "A"
+            continue
+
+        if raw_line.startswith("+++ /dev/null"):
+            status = "D"
+            continue
+
+        if raw_line.startswith("Binary files "):
+            if additions == 0:
+                additions = 1
             continue
 
         if current_path is None or raw_line.startswith(("+++", "---")) or HUNK_RE.match(raw_line):

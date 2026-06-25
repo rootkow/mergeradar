@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -7,7 +8,13 @@ from mergeradar.models import AnalysisContext, TriggeredRule
 
 
 class Rule(Protocol):
-    """Interface implemented by analysis rules."""
+    """Interface implemented by analysis rules.
+
+    Attributes:
+        id: Unique dotted identifier (e.g. "db.migration_changed").
+        title: Human-readable rule name.
+        score: Risk contribution when triggered (positive = risk, negative = stabilizer).
+    """
 
     id: str
     title: str
@@ -18,12 +25,19 @@ class Rule(Protocol):
 
 
 @dataclass(slots=True)
-class SimpleRule:
-    """Base rule containing shared result metadata."""
+class SimpleRule(ABC):
+    """Abstract base rule containing shared result metadata.
+
+    Subclasses must implement ``evaluate``.
+    """
 
     id: str
     title: str
     score: int
+
+    @abstractmethod
+    def evaluate(self, context: AnalysisContext) -> TriggeredRule | None:
+        ...
 
     def trigger(self, reason: str) -> TriggeredRule:
         """Create a triggered result with the rule's metadata and a reason."""

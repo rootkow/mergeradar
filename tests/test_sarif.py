@@ -1,12 +1,7 @@
 import json
 
 from mergeradar.models import RiskReport, TriggeredRule
-from mergeradar.renderers.sarif import render_sarif
-
-SARIF_SCHEMA = (
-    "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/"
-    "master/Schemata/sarif-schema-2.1.0.json"
-)
+from mergeradar.renderers.sarif import SARIF_SCHEMA, render_sarif
 
 
 def test_sarif_includes_schema_and_version() -> None:

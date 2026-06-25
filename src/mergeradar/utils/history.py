@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 
+@dataclass(slots=True)
 class HistoryEntry:
-    def __init__(self, score: int, risk_level: str, commit: str, timestamp: str) -> None:
-        self.score = score
-        self.risk_level = risk_level
-        self.commit = commit
-        self.timestamp = timestamp
+    score: int
+    risk_level: str
+    commit: str = ""
+    timestamp: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -32,6 +33,11 @@ class HistoryEntry:
 
 
 def load_history(path: Path) -> list[HistoryEntry]:
+    """Load score history from a JSON file.
+
+    Returns an empty list if the file is missing, corrupt, or not a list.
+    """
+
     if not path.exists():
         return []
     try:
@@ -44,6 +50,8 @@ def load_history(path: Path) -> list[HistoryEntry]:
 
 
 def append_history(path: Path, score: int, risk_level: str, commit: str = "") -> None:
+    """Append a score entry to the history file and keep only the 20 most recent."""
+
     entries = load_history(path)
     entries.append(
         HistoryEntry(
@@ -62,6 +70,8 @@ def append_history(path: Path, score: int, risk_level: str, commit: str = "") ->
 
 
 def compute_trend(current_score: int, previous_score: int | None) -> str:
+    """Return whether the risk score is increasing, decreasing, stable, or first_scan."""
+
     if previous_score is None:
         return "first_scan"
     if current_score > previous_score:

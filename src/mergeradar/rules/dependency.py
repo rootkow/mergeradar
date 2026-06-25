@@ -38,7 +38,12 @@ class CrossChangeDepsRule(SimpleRule):
 
 
 class WideBlastRadiusRule(SimpleRule):
-    """Detect changes that import many distinct internal modules."""
+    """Detect changes that import many distinct internal modules.
+
+    Reads every changed Python file from disk and parses its imports via
+    ``ast.parse``. This can be slow for large files or PRs touching many
+    files, and results are not cached between rule evaluations.
+    """
 
     def evaluate(self, context: AnalysisContext) -> TriggeredRule | None:
         repo = Path(context.repo_path)

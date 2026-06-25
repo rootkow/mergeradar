@@ -1,7 +1,7 @@
 from mergeradar.analysis.classifier import classify_file, enrich_changed_files
 from mergeradar.analysis.context_builder import build_context
 from mergeradar.analysis.scorer import score_context
-from mergeradar.config import MergeRadarConfig, RuleOverride
+from mergeradar.config import CustomRuleDef, MergeRadarConfig, RuleOverride
 from mergeradar.models import ChangedFile
 from mergeradar.rules import get_rules
 
@@ -315,3 +315,90 @@ def test_tests_only_rule_does_not_trigger_when_mixed() -> None:
         ),
     )
     assert rule.evaluate(context) is None
+
+
+def test_risky_change_without_docs_triggers_no_docs_rule() -> None:
+    changed_files = enrich_changed_files(
+        [
+            ChangedFile(
+                path="app/auth/service.py",
+                old_path=None,
+                status="M",
+                additions=10,
+                deletions=0,
+            ),
+        ]
+    )
+    context = build_context(repo_path=".", changed_files=changed_files)
+    report = score_context(context)
+
+    assert any(rule.id == "evidence.no_docs_for_risky_change" for rule in report.triggered_rules)
+
+
+def test_risky_change_with_docs_does_not_trigger_no_docs_rule() -> None:
+    changed_files = enrich_changed_files(
+        [
+            ChangedFile(
+                path="app/auth/service.py",
+                old_path=None,
+                status="M",
+                additions=10,
+                deletions=0,
+            ),
+            ChangedFile(
+                path="docs/security.md",
+                old_path=None,
+                status="M",
+                additions=5,
+                deletions=0,
+            ),
+        ]
+    )
+    context = build_context(repo_path=".", changed_files=changed_files)
+    report = score_context(context)
+
+    assert not any(
+        rule.id == "evidence.no_docs_for_risky_change" for rule in report.triggered_rules
+    )
+
+
+def test_get_rules_includes_cross_dependency_rules() -> None:
+    rules = get_rules()
+    rule_ids = {r.id for r in rules}
+    assert "deps.cross_change" in rule_ids
+    assert "deps.wide_blast_radius" in rule_ids
+
+
+def test_get_rules_includes_custom_rules() -> None:
+    cfg = MergeRadarConfig(
+        custom_rules=[
+            CustomRuleDef(
+                id="custom.secret_scanner",
+                title="Secret scanner changed",
+                score=3,
+                category="infra",
+                reason="Secret scanner configuration changed in",
+            ),
+        ]
+    )
+    rules = get_rules(cfg)
+    custom = [r for r in rules if r.id == "custom.secret_scanner"]
+    assert len(custom) == 1
+    assert custom[0].score == 3
+
+
+def test_get_rules_custom_rule_can_be_disabled() -> None:
+    cfg = MergeRadarConfig(
+        custom_rules=[
+            CustomRuleDef(
+                id="custom.secret_scanner",
+                title="Secret scanner changed",
+                score=3,
+                category="infra",
+                reason="Secret scanner configuration changed in",
+            ),
+        ],
+        rule_overrides={"custom.secret_scanner": RuleOverride(enabled=False)},
+    )
+    rules = get_rules(cfg)
+    assert all(r.id != "custom.secret_scanner" for r in rules) 

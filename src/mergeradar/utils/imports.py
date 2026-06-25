@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import ast
+import sys
 from pathlib import Path
 
 
 def parse_imports(content: str) -> set[str]:
-    """Return the set of top-level module names imported in Python source."""
+    """Return the set of absolute module names imported in Python source."""
 
     try:
         tree = ast.parse(content)
@@ -16,23 +17,32 @@ def parse_imports(content: str) -> set[str]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                top = alias.name.split(".")[0]
-                modules.add(top)
+                modules.add(alias.name)
         elif isinstance(node, ast.ImportFrom):
-            if node.module is not None:
-                top = node.module.split(".")[0]
-                modules.add(top)
+            if node.level == 0 and node.module is not None:
+                modules.add(node.module)
 
     return modules
 
 
-def _module_to_candidates(top_name: str) -> list[str]:
-    """Return file-path candidates for a top-level module name."""
+def _module_to_candidates(module_name: str) -> list[str]:
+    """Return file-path candidates for a module name."""
 
-    candidates = [f"{top_name}.py"]
-    if top_name != "__init__":
-        candidates.append(f"{top_name}/__init__.py")
+    module_path = module_name.replace(".", "/")
+    candidates = [f"{module_path}.py"]
+    if module_name != "__init__":
+        candidates.append(f"{module_path}/__init__.py")
     return candidates
+
+
+def _import_roots(repo_path: Path) -> list[Path]:
+    """Return repository roots that can contain importable local modules."""
+
+    roots = [repo_path]
+    src = repo_path / "src"
+    if src.is_dir():
+        roots.append(src)
+    return roots
 
 
 def resolve_imports(modules: set[str], repo_path: Path) -> set[Path]:
@@ -40,12 +50,13 @@ def resolve_imports(modules: set[str], repo_path: Path) -> set[Path]:
 
     resolved: set[Path] = set()
     for mod in sorted(modules):
-        if mod in _STDLIB_MODULES:
+        if mod.split(".")[0] in _STDLIB_MODULES:
             continue
-        for candidate in _module_to_candidates(mod):
-            candidate_path = repo_path / candidate
-            if candidate_path.exists():
-                resolved.add(candidate_path.resolve())
+        for root in _import_roots(repo_path):
+            for candidate in _module_to_candidates(mod):
+                candidate_path = root / candidate
+                if candidate_path.exists():
+                    resolved.add(candidate_path.resolve())
 
     return resolved
 
@@ -99,67 +110,4 @@ def get_changed_file_local_imports(
     return dep_map
 
 
-_STDLIB_MODULES: set[str] = {
-    "abc",
-    "ast",
-    "asyncio",
-    "base64",
-    "collections",
-    "concurrent",
-    "copy",
-    "csv",
-    "datetime",
-    "decimal",
-    "enum",
-    "functools",
-    "glob",
-    "hashlib",
-    "html",
-    "http",
-    "importlib",
-    "inspect",
-    "io",
-    "itertools",
-    "json",
-    "logging",
-    "math",
-    "multiprocessing",
-    "operator",
-    "os",
-    "pathlib",
-    "pickle",
-    "platform",
-    "pprint",
-    "queue",
-    "random",
-    "re",
-    "shutil",
-    "signal",
-    "socket",
-    "sqlite3",
-    "statistics",
-    "string",
-    "struct",
-    "subprocess",
-    "sys",
-    "tempfile",
-    "textwrap",
-    "threading",
-    "time",
-    "traceback",
-    "typing",
-    "unittest",
-    "urllib",
-    "uuid",
-    "warnings",
-    "weakref",
-    "xml",
-    "zipfile",
-    "zoneinfo",
-    "dataclasses",
-    "contextlib",
-    "fractions",
-    "numbers",
-    "secrets",
-    "types",
-}
+_STDLIB_MODULES: frozenset[str] = sys.stdlib_module_names

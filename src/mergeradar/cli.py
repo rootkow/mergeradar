@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import tomllib
 from pathlib import Path
 from typing import Annotated
@@ -94,7 +95,8 @@ def analyze(
             raise typer.Exit(code=1) from exc
 
         changed_files = enrich_changed_files(changed_files, config=cfg)
-        context = build_context(repo_path=repo_label, changed_files=changed_files, config=cfg)
+        context_repo = str(repo.resolve())
+        context = build_context(repo_path=context_repo, changed_files=changed_files, config=cfg)
         report = score_context(context, config=cfg)
 
         if output_format not in {"markdown", "json", "sarif", "annotations"}:
@@ -111,14 +113,16 @@ def analyze(
             commit = ""
             if not diff_file:
                 try:
-                    import subprocess
                     result = subprocess.run(
                         ["git", "-C", str(repo), "rev-parse", "--short", "HEAD"],
-                        capture_output=True, text=True, timeout=10,
+                        capture_output=True, text=True, timeout=10, check=True,
                     )
                     commit = result.stdout.strip()
-                except Exception:
-                    pass
+                except (subprocess.CalledProcessError, FileNotFoundError, OSError) as exc:
+                    if verbose:
+                        console.print(
+                            f"[yellow]Warning: could not determine commit hash: {exc}[/yellow]"
+                        )
             append_history(history_file, report.score, report.risk_level, commit)
 
         if output_format == "markdown":
@@ -154,7 +158,7 @@ def analyze(
 
         threshold = check if check is not None else _env_check()
         if threshold is not None and report.score >= threshold:
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=5)
 
     except DiffLoaderError as exc:
         console.print(f"[red]Failed to load diff:[/red] {exc}")
@@ -163,7 +167,7 @@ def analyze(
 
 def _env_check() -> int | None:
     """Return the check threshold from the environment variable, if set."""
-    val = os.environ.get("MERGEDARAR_CHECK")
+    val = os.environ.get("MERGERADAR_CHECK")
     if val is None:
         return None
     try:
