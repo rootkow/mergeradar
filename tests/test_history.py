@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from mergeradar.utils.history import (
     HistoryEntry,
     append_history,
@@ -47,18 +49,25 @@ def test_load_history_returns_empty_when_no_file(tmp_path: Path) -> None:
     assert entries == []
 
 
-def test_load_history_returns_empty_on_corrupt_json(tmp_path: Path) -> None:
+def test_load_history_raises_on_corrupt_json(tmp_path: Path) -> None:
     f = tmp_path / "history.json"
     f.write_text("not valid json")
-    entries = load_history(f)
-    assert entries == []
+    with pytest.raises(ValueError, match="not valid JSON"):
+        load_history(f)
 
 
-def test_load_history_returns_empty_on_wrong_type(tmp_path: Path) -> None:
+def test_load_history_raises_on_wrong_type(tmp_path: Path) -> None:
     f = tmp_path / "history.json"
     f.write_text('{"score": 5}')
-    entries = load_history(f)
-    assert entries == []
+    with pytest.raises(ValueError, match="Expected a JSON array"):
+        load_history(f)
+
+
+def test_load_history_raises_on_invalid_schema(tmp_path: Path) -> None:
+    f = tmp_path / "history.json"
+    f.write_text('[{"bad": "data"}]')
+    with pytest.raises(ValueError, match="invalid schema"):
+        load_history(f)
 
 
 def test_append_and_load_history(tmp_path: Path) -> None:

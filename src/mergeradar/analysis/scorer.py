@@ -5,6 +5,19 @@ from mergeradar.config import MergeRadarConfig
 from mergeradar.models import AnalysisContext, RiskReport, TriggeredRule
 from mergeradar.rules import get_rules
 
+SUMMARY_CATEGORY_LABELS = {
+    "app": "application code",
+    "auth": "authentication",
+    "api": "API surface",
+    "database": "database",
+    "deps": "dependencies",
+    "infra": "infrastructure",
+    "config": "configuration",
+    "tests": "tests",
+    "docs": "documentation",
+    "unknown": "other files",
+}
+
 
 def calculate_risk_level(score: int) -> str:
     """Map a numeric risk score to its display level."""
@@ -19,18 +32,37 @@ def calculate_risk_level(score: int) -> str:
 
 
 def build_summary(context: AnalysisContext, triggered_rules: list[TriggeredRule]) -> str:
-    """Summarize the touched categories and strongest triggered rules."""
+    """Summarize the changed scope without repeating detailed report sections."""
 
-    categories = ", ".join(sorted(context.categories_touched)) or "unknown areas"
+    categories = _format_summary_categories(context.categories_touched)
+    file_count = context.total_files_changed
+    file_label = "file" if file_count == 1 else "files"
+    change_size = (
+        f"{file_count} {file_label}, "
+        f"+{context.total_additions}/-{context.total_deletions}"
+    )
+
     if not triggered_rules:
         return (
-            f"This change touches {categories} with no risk signals triggered "
-            "by the current rule set."
+            f"This change touches {categories}.\n"
+            f"Change size: {change_size}\n"
+            "No risk signals were triggered by the current rule set"
         )
 
-    strongest = sorted(triggered_rules, key=lambda rule: rule.score, reverse=True)[:3]
-    focus = ", ".join(rule.title.lower() for rule in strongest)
-    return f"This change touches {categories} and triggered the following main signals: {focus}."
+    signal_count = len(triggered_rules)
+    signal_label = "signal" if signal_count == 1 else "signals"
+    return (
+        f"This change touches {categories}.\n"
+        f"Change size: {change_size}\n"
+        f"{signal_count} risk {signal_label} triggered"
+    )
+
+
+def _format_summary_categories(categories: set[str]) -> str:
+    """Format internal category IDs for human-readable summary prose."""
+
+    labels = [SUMMARY_CATEGORY_LABELS.get(category, category) for category in sorted(categories)]
+    return ", ".join(labels) or "unclassified files"
 
 
 def score_context(context: AnalysisContext, config: MergeRadarConfig | None = None) -> RiskReport:

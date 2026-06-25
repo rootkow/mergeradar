@@ -27,7 +27,24 @@ mergeradar analyze --format json --check 6               # CI gate with score th
 mergeradar analyze --format annotations                  # GitHub Actions inline feedback
 ```
 
-See `mergeradar analyze --help` for all options.
+## CLI Options
+
+`mergeradar analyze` accepts the following options:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--repo` | PATH | `.` | Path to the local git repository |
+| `--base` | TEXT | -- | Base ref to diff from (e.g. `main`) |
+| `--head` | TEXT | -- | Head ref to diff to (requires `--base`) |
+| `--diff-file` | PATH | -- | Path to a saved unified diff file |
+| `--config` | PATH | -- | Path to a `.mergeradar.toml` config file |
+| `--output` | PATH | -- | File path to write the report (printed to stdout by default) |
+| `--history` | PATH | -- | Path to a history JSON file for tracking score trends across runs |
+| `--format` | TEXT | `markdown` | Output format: `markdown`, `json`, `sarif`, or `annotations` |
+| `--check` | INT | -- | Exit non-zero if risk score >= this threshold |
+| `--verbose` | FLAG | `False` | Print extra debugging context (classification, categories) |
+
+Additionally, the `MERGERADAR_CHECK` environment variable sets the check threshold (overridden by `--check`).
 
 ## How It Works
 

@@ -35,18 +35,33 @@ class HistoryEntry:
 def load_history(path: Path) -> list[HistoryEntry]:
     """Load score history from a JSON file.
 
-    Returns an empty list if the file is missing, corrupt, or not a list.
+    Returns an empty list if the file does not exist.
+    Raises ValueError if the file exists but is not a valid history JSON file.
     """
 
     if not path.exists():
         return []
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-        if isinstance(data, list):
-            return [HistoryEntry.from_dict(entry) for entry in data]
-    except (json.JSONDecodeError, KeyError, TypeError):
-        pass
-    return []
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"History file '{path}' is not valid JSON: {e}"
+        ) from e
+
+    if not isinstance(data, list):
+        raise ValueError(
+            f"Expected a JSON array in history file '{path}', got {type(data).__name__}"
+        )
+
+    entries: list[HistoryEntry] = []
+    for i, entry in enumerate(data):
+        try:
+            entries.append(HistoryEntry.from_dict(entry))
+        except (KeyError, TypeError) as e:
+            raise ValueError(
+                f"History file '{path}', entry {i} has invalid schema: missing key {e}"
+            ) from e
+    return entries
 
 
 def append_history(path: Path, score: int, risk_level: str, commit: str = "") -> None:
