@@ -27,7 +27,8 @@ def test_render_markdown_includes_triggered_rules() -> None:
                 id="auth.path_touched",
                 title="Auth-sensitive code changed",
                 score=3,
-                reason="app/auth.py",
+                reason="Detected auth-sensitive code changes in: app/auth.py, app/session.py",
+                paths=["app/auth.py", "app/session.py"],
             ),
         ],
         missing_evidence=[],
@@ -37,7 +38,9 @@ def test_render_markdown_includes_triggered_rules() -> None:
     output = render_markdown(report)
     assert "[+3]" in output
     assert "Auth-sensitive code changed" in output
-    assert "app/auth.py" in output
+    assert "Detected auth-sensitive code changes in:" in output
+    assert "    - `app/auth.py`" in output
+    assert "    - `app/session.py`" in output
 
 
 def test_render_markdown_shows_no_risk_signals_when_empty() -> None:

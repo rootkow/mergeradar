@@ -6,7 +6,7 @@ from mergeradar.models import AnalysisContext, TriggeredRule
 from mergeradar.rules.base import SimpleRule
 from mergeradar.utils.imports import (
     get_changed_file_local_imports,
-    parse_imports,
+    parse_imports_for_file,
     resolve_imports,
 )
 
@@ -28,12 +28,12 @@ class CrossChangeDepsRule(SimpleRule):
         if cross_count < 2:
             return None
 
-        paths_with_deps = sorted(
-            path for path, deps in dep_map.items() if deps
-        )
+        paths_with_deps = sorted(path for path, deps in dep_map.items() if deps)
+        shown_paths = paths_with_deps[:3]
         return self.trigger(
             f"Changed files import from other changed files: "
-            f"{', '.join(paths_with_deps[:3])}"
+            f"{', '.join(shown_paths)}",
+            paths=shown_paths,
         )
 
 
@@ -56,8 +56,8 @@ class WideBlastRadiusRule(SimpleRule):
             abs_path = repo / cf.path
             if not abs_path.exists():
                 continue
-            modules = parse_imports(
-                abs_path.read_text(encoding="utf-8", errors="replace")
+            modules = parse_imports_for_file(
+                abs_path.read_text(encoding="utf-8", errors="replace"), abs_path, repo
             )
             resolved = resolve_imports(modules, repo)
             total_internal_imports.update(resolved)

@@ -53,6 +53,7 @@ class TriggeredRule:
     title: str
     score: int
     reason: str
+    paths: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         """Return a dictionary representation of the triggered rule."""

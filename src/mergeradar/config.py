@@ -60,12 +60,12 @@ def load_config(path: Path | None = None, repo_path: Path = Path(".")) -> MergeR
     return None
 
 
-def _parse_str_list(raw: object) -> set[str]:
-    """Convert a TOML list value to a set of strings. Returns empty set for non-list input."""
+def _parse_required_str_list(raw: object, key: str) -> set[str]:
+    """Convert a required TOML list value to a set of strings."""
 
-    if isinstance(raw, list):
-        return {str(item) for item in raw}
-    return set()
+    if not isinstance(raw, list):
+        raise ConfigError(f"'{key}' must be a list of strings.")
+    return {str(item) for item in raw}
 
 
 def _parse_str_dict(raw: object) -> dict[str, str]:
@@ -133,7 +133,7 @@ def _parse_config(data: dict[str, Any]) -> MergeRadarConfig:
         keywords=keywords,
         rule_overrides=rules,
         risky_categories=(
-            _parse_str_list(data["risky_categories"])
+            _parse_required_str_list(data["risky_categories"], "risky_categories")
             if "risky_categories" in data
             else {"database", "auth", "infra", "config", "api", "deps"}
         ),
