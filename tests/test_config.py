@@ -90,6 +90,11 @@ def test_parse_risky_categories_override() -> None:
     assert cfg.risky_categories == {"auth", "infra"}
 
 
+def test_parse_risky_categories_rejects_non_list() -> None:
+    with pytest.raises(ConfigError, match="risky_categories.*list"):
+        _parse_config({"risky_categories": "auth"})
+
+
 def test_parse_custom_rule_requires_reason() -> None:
     with pytest.raises(ConfigError, match="reason must be a string"):
         _parse_config(

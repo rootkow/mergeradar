@@ -33,13 +33,18 @@ def test_changed_file_to_dict_defaults() -> None:
 
 def test_triggered_rule_to_dict() -> None:
     rule = TriggeredRule(
-        id="auth.path_touched", title="Auth-sensitive code changed", score=3, reason="app/auth.py"
+        id="auth.path_touched",
+        title="Auth-sensitive code changed",
+        score=3,
+        reason="app/auth.py",
+        paths=["app/auth.py"],
     )
     d = rule.to_dict()
     assert d["id"] == "auth.path_touched"
     assert d["title"] == "Auth-sensitive code changed"
     assert d["score"] == 3
     assert d["reason"] == "app/auth.py"
+    assert d["paths"] == ["app/auth.py"]
 
 
 def test_risk_report_to_dict() -> None:

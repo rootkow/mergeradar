@@ -4,6 +4,7 @@ from mergeradar.utils.imports import (
     get_changed_file_local_imports,
     get_local_imports,
     parse_imports,
+    parse_imports_for_file,
     resolve_imports,
 )
 
@@ -108,12 +109,37 @@ def test_parse_imports_from_import() -> None:
     content = "from collections.abc import Iterator\n"
     modules = parse_imports(content)
     assert "collections.abc" in modules
+    assert "collections.abc.Iterator" in modules
 
 
 def test_parse_imports_relative_from_import() -> None:
     content = "from . import sibling\n"
     modules = parse_imports(content)
     assert modules == set()
+
+
+def test_parse_imports_for_file_resolves_relative_module_import(tmp_path: Path) -> None:
+    pkg = tmp_path / "src" / "mypkg"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").touch()
+    source = pkg / "app.py"
+    source.write_text("from .config import Settings\n")
+
+    modules = parse_imports_for_file(source.read_text(), source, tmp_path)
+
+    assert modules == {"mypkg.config"}
+
+
+def test_parse_imports_for_file_resolves_relative_alias_import(tmp_path: Path) -> None:
+    pkg = tmp_path / "src" / "mypkg"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").touch()
+    source = pkg / "app.py"
+    source.write_text("from . import sibling\n")
+
+    modules = parse_imports_for_file(source.read_text(), source, tmp_path)
+
+    assert modules == {"mypkg.sibling"}
 
 
 def test_resolve_imports_multiple_candidates(tmp_path: Path) -> None:
@@ -156,3 +182,35 @@ def test_get_changed_file_local_imports_finds_src_layout_cross_deps(tmp_path: Pa
     dep_map = get_changed_file_local_imports(changed, str(tmp_path))
 
     assert dep_map["src/mypkg/app.py"] == {"src/mypkg/config.py"}
+
+
+def test_get_changed_file_local_imports_finds_absolute_submodule_cross_deps(
+    tmp_path: Path,
+) -> None:
+    pkg = tmp_path / "src" / "mypkg"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").touch()
+    (pkg / "app.py").write_text("from mypkg import config\n")
+    (pkg / "worker.py").write_text("from mypkg import config as app_config\n")
+    (pkg / "config.py").write_text("class Settings: ...\n")
+
+    changed = ["src/mypkg/app.py", "src/mypkg/worker.py", "src/mypkg/config.py"]
+    dep_map = get_changed_file_local_imports(changed, str(tmp_path))
+
+    assert dep_map["src/mypkg/app.py"] == {"src/mypkg/config.py"}
+    assert dep_map["src/mypkg/worker.py"] == {"src/mypkg/config.py"}
+
+
+def test_get_changed_file_local_imports_finds_relative_cross_deps(tmp_path: Path) -> None:
+    pkg = tmp_path / "src" / "mypkg"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").touch()
+    (pkg / "app.py").write_text("from .config import Settings\n")
+    (pkg / "worker.py").write_text("from . import config\n")
+    (pkg / "config.py").write_text("class Settings: ...\n")
+
+    changed = ["src/mypkg/app.py", "src/mypkg/worker.py", "src/mypkg/config.py"]
+    dep_map = get_changed_file_local_imports(changed, str(tmp_path))
+
+    assert dep_map["src/mypkg/app.py"] == {"src/mypkg/config.py"}
+    assert dep_map["src/mypkg/worker.py"] == {"src/mypkg/config.py"}

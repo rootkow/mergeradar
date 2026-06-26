@@ -39,6 +39,31 @@ def test_annotation_format_with_path() -> None:
     assert "::Detected auth-sensitive code changes" in result
 
 
+def test_annotation_uses_structured_paths_without_reason_parsing() -> None:
+    report = RiskReport(
+        risk_level="High",
+        score=3,
+        summary="Auth change.",
+        triggered_rules=[
+            TriggeredRule(
+                id="auth.path_touched",
+                title="Auth-sensitive code changed",
+                score=3,
+                reason="Structured signal.",
+                paths=["app/auth/service.py"],
+            ),
+        ],
+        missing_evidence=[],
+        recommendations=[],
+        changed_files=[],
+    )
+
+    result = render_annotations(report)
+
+    assert "::warning file=app/auth/service.py,line=1," in result
+    assert "::Structured signal." in result
+
+
 def test_annotation_format_without_path() -> None:
     report = RiskReport(
         risk_level="Medium",

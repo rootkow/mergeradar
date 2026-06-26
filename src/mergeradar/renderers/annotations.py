@@ -39,7 +39,7 @@ def render_annotations(report: RiskReport) -> str:
     lines: list[str] = []
     for rule in report.triggered_rules:
         level = _annotation_level(rule.score)
-        files = _extract_file_paths(rule.reason)
+        files = rule.paths or _extract_file_paths(rule.reason)
         safe_reason = _sanitize_data(rule.reason)
         safe_title = _sanitize_property(rule.title)
         if files:

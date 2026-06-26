@@ -39,10 +39,16 @@ class SimpleRule(ABC):
     def evaluate(self, context: AnalysisContext) -> TriggeredRule | None:
         ...
 
-    def trigger(self, reason: str) -> TriggeredRule:
+    def trigger(self, reason: str, paths: list[str] | None = None) -> TriggeredRule:
         """Create a triggered result with the rule's metadata and a reason."""
 
-        return TriggeredRule(id=self.id, title=self.title, score=self.score, reason=reason)
+        return TriggeredRule(
+            id=self.id,
+            title=self.title,
+            score=self.score,
+            reason=reason,
+            paths=paths or [],
+        )
 
 
 @dataclass(slots=True)
@@ -63,4 +69,5 @@ class CategoryChangedRule(SimpleRule):
         if not paths:
             return None
 
-        return self.trigger(f"{self.reason_prefix}: {', '.join(paths[:3])}")
+        shown_paths = paths[:3]
+        return self.trigger(f"{self.reason_prefix}: {', '.join(shown_paths)}", paths=shown_paths)

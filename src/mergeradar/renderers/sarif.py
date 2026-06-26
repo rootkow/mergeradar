@@ -20,28 +20,20 @@ def _level(score: int) -> str:
     return "warning" if score > 0 else "note"
 
 
-def _extract_paths(reason: str) -> list[str]:
-    if ": " not in reason:
-        return []
-    after_colon = reason.split(": ", 1)[1]
-    return [p.strip() for p in after_colon.split(", ") if p.strip()]
-
-
 def _sarif_result(rule: TriggeredRule) -> dict:
     result: dict = {
         "ruleId": rule.id,
         "level": _level(rule.score),
         "message": {"text": rule.reason},
     }
-    paths = _extract_paths(rule.reason)
-    if paths:
+    if rule.paths:
         result["locations"] = [
             {
                 "physicalLocation": {
                     "artifactLocation": {"uri": path},
                 },
             }
-            for path in paths
+            for path in rule.paths
         ]
     return result
 

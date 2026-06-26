@@ -1,6 +1,6 @@
 import json
 
-from mergeradar.models import RiskReport, TriggeredRule
+from mergeradar.models import ChangedFile, RiskReport, TriggeredRule
 from mergeradar.renderers.sarif import SARIF_SCHEMA, render_sarif
 
 
@@ -128,16 +128,89 @@ def test_sarif_result_includes_locations_from_reason() -> None:
                     "Detected deployment or infrastructure changes in: "
                     "deploy/main.tf, Dockerfile"
                 ),
+                paths=["deploy/main.tf", "Dockerfile"],
+            ),
+        ],
+        missing_evidence=[],
+        recommendations=[],
+        changed_files=[
+            ChangedFile(
+                path="deploy/main.tf",
+                old_path=None,
+                status="M",
+                additions=1,
+                deletions=0,
+            ),
+            ChangedFile(
+                path="Dockerfile",
+                old_path=None,
+                status="M",
+                additions=1,
+                deletions=0,
+            ),
+        ],
+    )
+    doc = json.loads(render_sarif(report))
+    result = doc["runs"][0]["results"][0]
+    uris = [loc["physicalLocation"]["artifactLocation"]["uri"] for loc in result["locations"]]
+    assert uris == ["deploy/main.tf", "Dockerfile"]
+
+
+def test_sarif_does_not_turn_component_reason_into_locations() -> None:
+    report = RiskReport(
+        risk_level="Medium",
+        score=2,
+        summary="Multiple components.",
+        triggered_rules=[
+            TriggeredRule(
+                id="scope.multiple_components_changed",
+                title="Multiple top-level components changed",
+                score=2,
+                reason="Multiple top-level components changed: app, api, infra",
+            ),
+        ],
+        missing_evidence=[],
+        recommendations=[],
+        changed_files=[
+            ChangedFile(
+                path="app/main.py",
+                old_path=None,
+                status="M",
+                additions=1,
+                deletions=0,
+            ),
+        ],
+    )
+
+    doc = json.loads(render_sarif(report))
+    result = doc["runs"][0]["results"][0]
+
+    assert "locations" not in result
+
+
+def test_sarif_uses_structured_paths_without_reason_parsing() -> None:
+    report = RiskReport(
+        risk_level="Medium",
+        score=2,
+        summary="Structured paths.",
+        triggered_rules=[
+            TriggeredRule(
+                id="custom.rule",
+                title="Custom rule",
+                score=2,
+                reason="Structured signal without parseable paths.",
+                paths=["app/service.py"],
             ),
         ],
         missing_evidence=[],
         recommendations=[],
         changed_files=[],
     )
+
     doc = json.loads(render_sarif(report))
     result = doc["runs"][0]["results"][0]
-    uris = [loc["physicalLocation"]["artifactLocation"]["uri"] for loc in result["locations"]]
-    assert uris == ["deploy/main.tf", "Dockerfile"]
+
+    assert result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "app/service.py"
 
 
 def test_sarif_no_locations_when_no_paths_in_reason() -> None:

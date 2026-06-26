@@ -36,7 +36,13 @@ def render_markdown(report: RiskReport, config: MergeRadarConfig | None = None) 
     if report.triggered_rules:
         for rule in report.triggered_rules:
             lines.append(f"- **[{rule.score:+d}] {rule.title}**")
-            lines.append(f"  - {rule.reason}")
+            if rule.paths:
+                reason_prefix = rule.reason.split(": ", 1)[0]
+                lines.append(f"  - {reason_prefix}:")
+                for path in rule.paths:
+                    lines.append(f"    - `{path}`")
+            else:
+                lines.append(f"  - {rule.reason}")
     else:
         lines.append("- No risk signals were triggered.")
 
