@@ -213,6 +213,28 @@ def test_sarif_uses_structured_paths_without_reason_parsing() -> None:
     assert result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "app/service.py"
 
 
+def test_sarif_does_not_infer_locations_from_reason_text() -> None:
+    report = RiskReport(
+        risk_level="Medium",
+        score=2,
+        summary="Multi-component change.",
+        triggered_rules=[
+            TriggeredRule(
+                id="scope.multiple_components_changed",
+                title="Multiple top-level components changed",
+                score=2,
+                reason="Multiple top-level components changed: app, api, infra",
+            ),
+        ],
+        missing_evidence=[],
+        recommendations=[],
+        changed_files=[],
+    )
+    doc = json.loads(render_sarif(report))
+    result = doc["runs"][0]["results"][0]
+    assert "locations" not in result
+
+
 def test_sarif_no_locations_when_no_paths_in_reason() -> None:
     report = RiskReport(
         risk_level="Medium",

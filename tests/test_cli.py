@@ -315,6 +315,49 @@ def test_history_flag_with_diff_file_has_risk_trend(tmp_path: Path) -> None:
     assert report["metadata"]["risk_trend"] == "increasing"
 
 
+def test_diff_file_does_not_read_matching_live_repo_files(tmp_path: Path) -> None:
+    (tmp_path / "a.py").write_text("import b\n")
+    (tmp_path / "b.py").write_text("import a\n")
+    diff_file = tmp_path / "saved.diff"
+    diff_file.write_text(
+        "\n".join(
+            [
+                "diff --git a/a.py b/a.py",
+                "--- a/a.py",
+                "+++ b/a.py",
+                "@@ -1 +1 @@",
+                "-old",
+                "+new",
+                "diff --git a/b.py b/b.py",
+                "--- a/b.py",
+                "+++ b/b.py",
+                "@@ -1 +1 @@",
+                "-old",
+                "+new",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "analyze",
+            "--repo",
+            str(tmp_path),
+            "--diff-file",
+            str(diff_file),
+            "--format",
+            "json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    report = json.loads(result.stdout)
+    triggered_rule_ids = {rule["id"] for rule in report["triggered_rules"]}
+    assert "deps.cross_change" not in triggered_rule_ids
+
+
 def test_invalid_config_score_reported(tmp_path: Path) -> None:
     config_file = tmp_path / "bad-score.toml"
     config_file.write_text('[rules."db.migration_changed"]\nscore = "high"\n')

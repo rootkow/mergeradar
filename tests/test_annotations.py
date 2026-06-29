@@ -27,6 +27,7 @@ def test_annotation_format_with_path() -> None:
                 title="Auth-sensitive code changed",
                 score=3,
                 reason="Detected auth-sensitive code changes in: app/auth/service.py",
+                paths=["app/auth/service.py"],
             ),
         ],
         missing_evidence=[],
@@ -123,6 +124,7 @@ def test_annotation_extracts_paths_with_extensions() -> None:
                     "Detected deployment or infrastructure changes in: "
                     "deploy/main.tf, Dockerfile"
                 ),
+                paths=["deploy/main.tf", "Dockerfile"],
             ),
         ],
         missing_evidence=[],
@@ -145,12 +147,14 @@ def test_annotation_multiple_rules() -> None:
                 title="Auth-sensitive code changed",
                 score=3,
                 reason="Detected auth-sensitive code changes in: app/auth.py",
+                paths=["app/auth.py"],
             ),
             TriggeredRule(
                 id="deps.changed",
                 title="Dependencies changed",
                 score=2,
                 reason="Detected dependency or package manifest changes in: requirements.txt",
+                paths=["requirements.txt"],
             ),
         ],
         missing_evidence=[],
@@ -174,6 +178,7 @@ def test_annotation_escapes_property_values() -> None:
                 title="Config: auth, api",
                 score=3,
                 reason="Detected risky change in: app/auth:api.py",
+                paths=["app/auth:api.py"],
             ),
         ],
         missing_evidence=[],
@@ -185,3 +190,24 @@ def test_annotation_escapes_property_values() -> None:
 
     assert "file=app/auth%3Aapi.py" in result
     assert "title=MergeRadar (Config%3A auth%2C api)" in result
+
+
+def test_annotations_do_not_infer_paths_from_reason_text() -> None:
+    report = RiskReport(
+        risk_level="Medium",
+        score=2,
+        summary="Multi-component.",
+        triggered_rules=[
+            TriggeredRule(
+                id="scope.multiple_components_changed",
+                title="Multiple top-level components changed",
+                score=2,
+                reason="Multiple top-level components changed: app, api, infra",
+            ),
+        ],
+        missing_evidence=[],
+        recommendations=[],
+        changed_files=[],
+    )
+    result = render_annotations(report)
+    assert "file=" not in result

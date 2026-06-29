@@ -43,6 +43,7 @@ class AnalysisContext:
     total_additions: int
     total_deletions: int
     risky_categories: set[str] = field(default_factory=set)
+    allow_filesystem_analysis: bool = True
 
 
 @dataclass(slots=True)

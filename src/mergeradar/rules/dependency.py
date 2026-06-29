@@ -15,6 +15,9 @@ class CrossChangeDepsRule(SimpleRule):
     """Detect cross-dependencies between changed files."""
 
     def evaluate(self, context: AnalysisContext) -> TriggeredRule | None:
+        if not context.allow_filesystem_analysis:
+            return None
+
         py_changed = [
             cf.path
             for cf in context.changed_files
@@ -46,6 +49,9 @@ class WideBlastRadiusRule(SimpleRule):
     """
 
     def evaluate(self, context: AnalysisContext) -> TriggeredRule | None:
+        if not context.allow_filesystem_analysis:
+            return None
+
         repo = Path(context.repo_path)
         total_internal_imports: set[Path] = set()
         py_files_checked = 0

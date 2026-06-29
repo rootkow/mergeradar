@@ -8,6 +8,7 @@ def build_context(
     repo_path: str,
     changed_files: list[ChangedFile],
     config: MergeRadarConfig | None = None,
+    allow_filesystem_analysis: bool = True,
 ) -> AnalysisContext:
     """Build aggregate analysis metadata from classified changed files."""
 
@@ -40,6 +41,7 @@ def build_context(
         total_additions=sum(changed_file.additions for changed_file in changed_files),
         total_deletions=sum(changed_file.deletions for changed_file in changed_files),
         risky_categories=risky_categories,
+        allow_filesystem_analysis=allow_filesystem_analysis,
     )
 
 

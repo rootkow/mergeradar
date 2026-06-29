@@ -78,12 +78,14 @@ def analyze(
         if diff_file is not None:
             changed_files = load_changed_files_from_diff_file(diff_file)
             repo_label = str(diff_file)
+            allow_filesystem_analysis = False
         else:
             if not is_git_repo(repo):
                 console.print(f"[red]{repo} is not a git repository.[/red]")
                 raise typer.Exit(code=3)
             changed_files = load_changed_files(repo_path=repo, base=base, head=head)
             repo_label = str(repo.resolve())
+            allow_filesystem_analysis = True
 
         try:
             cfg = load_config(path=config, repo_path=repo)
@@ -96,7 +98,12 @@ def analyze(
 
         changed_files = enrich_changed_files(changed_files, config=cfg)
         context_repo = str(repo.resolve())
-        context = build_context(repo_path=context_repo, changed_files=changed_files, config=cfg)
+        context = build_context(
+            repo_path=context_repo,
+            changed_files=changed_files,
+            config=cfg,
+            allow_filesystem_analysis=allow_filesystem_analysis,
+        )
         report = score_context(context, config=cfg)
 
         if output_format not in {"markdown", "json", "sarif", "annotations"}:
