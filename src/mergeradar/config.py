@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from mergeradar.exceptions import ConfigError
+
 
 @dataclass(slots=True)
 class RuleOverride:
@@ -30,14 +32,6 @@ class MergeRadarConfig:
     )
     category_headings: dict[str, str] = field(default_factory=dict)
     custom_rules: list[CustomRuleDef] = field(default_factory=list)
-
-
-class MergeRadarError(Exception):
-    """Base exception for MergeRadar errors."""
-
-
-class ConfigError(MergeRadarError):
-    """Raised when MergeRadar configuration is invalid."""
 
 
 def load_config(path: Path | None = None, repo_path: Path = Path(".")) -> MergeRadarConfig | None:

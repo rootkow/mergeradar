@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import functools
 import sys
 from pathlib import Path
 
@@ -76,8 +77,14 @@ def parse_imports(content: str) -> set[str]:
     return modules
 
 
-def parse_imports_for_file(content: str, file_path: Path, repo_path: Path) -> set[str]:
+@functools.cache
+def parse_imports_for_file(file_path: Path, repo_path: Path) -> set[str]:
     """Return imports from source, including relative imports resolved for a file."""
+
+    try:
+        content = file_path.read_text(encoding="utf-8")
+    except Exception:
+        return set()
 
     try:
         tree = ast.parse(content)
@@ -159,12 +166,7 @@ def get_local_imports(file_path: Path, repo_path: Path) -> set[Path]:
     if not file_path.exists():
         return set()
 
-    try:
-        content = file_path.read_text(encoding="utf-8")
-    except Exception:
-        return set()
-
-    modules = parse_imports_for_file(content, file_path, repo_path)
+    modules = parse_imports_for_file(file_path, repo_path)
     return resolve_imports(modules, repo_path)
 
 

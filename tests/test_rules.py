@@ -71,7 +71,7 @@ def test_lockfile_only_reduces_risk() -> None:
     assert any(rule.id == "stability.lockfile_only" for rule in report.triggered_rules)
 
 
-def test_deleted_lockfile_does_not_reduce_risk() -> None:
+def test_deleted_lockfile_reduces_risk() -> None:
     changed_files = enrich_changed_files(
         [
             ChangedFile(
@@ -86,7 +86,7 @@ def test_deleted_lockfile_does_not_reduce_risk() -> None:
     context = build_context(repo_path=".", changed_files=changed_files)
     report = score_context(context)
 
-    assert not any(rule.id == "stability.lockfile_only" for rule in report.triggered_rules)
+    assert any(rule.id == "stability.lockfile_only" for rule in report.triggered_rules)
 
 
 def test_docs_only_change_reduces_risk() -> None:

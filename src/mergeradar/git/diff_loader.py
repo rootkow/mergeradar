@@ -4,16 +4,12 @@ import re
 import subprocess
 from pathlib import Path
 
-from mergeradar.config import MergeRadarError
+from mergeradar.exceptions import DiffLoaderError
 from mergeradar.models import ChangedFile
 
 DIFF_HEADER_RE = re.compile(r"^diff --git a/(.+?) b/(.+)$")
 HUNK_RE = re.compile(r"^@@ .+ @@")
 BRACED_RENAME_RE = re.compile(r"^(.*)\{.* => (.*)\}(.*)$")
-
-
-class DiffLoaderError(MergeRadarError):
-    """Raised when a Git diff cannot be loaded or contains no changes."""
 
 
 def load_changed_files(

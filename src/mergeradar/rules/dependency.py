@@ -62,9 +62,7 @@ class WideBlastRadiusRule(SimpleRule):
             abs_path = repo / cf.path
             if not abs_path.exists():
                 continue
-            modules = parse_imports_for_file(
-                abs_path.read_text(encoding="utf-8", errors="replace"), abs_path, repo
-            )
+            modules = parse_imports_for_file(abs_path, repo)
             resolved = resolve_imports(modules, repo)
             total_internal_imports.update(resolved)
             py_files_checked += 1

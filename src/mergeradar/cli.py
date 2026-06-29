@@ -15,7 +15,8 @@ from rich.table import Table
 from mergeradar.analysis.classifier import enrich_changed_files
 from mergeradar.analysis.context_builder import build_context
 from mergeradar.analysis.scorer import score_context
-from mergeradar.config import ConfigError, load_config
+from mergeradar.config import load_config
+from mergeradar.exceptions import ConfigError
 from mergeradar.git.diff_loader import (
     DiffLoaderError,
     load_changed_files,

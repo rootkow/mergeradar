@@ -125,7 +125,7 @@ def test_parse_imports_for_file_resolves_relative_module_import(tmp_path: Path) 
     source = pkg / "app.py"
     source.write_text("from .config import Settings\n")
 
-    modules = parse_imports_for_file(source.read_text(), source, tmp_path)
+    modules = parse_imports_for_file(source, tmp_path)
 
     assert modules == {"mypkg.config"}
 
@@ -137,7 +137,7 @@ def test_parse_imports_for_file_resolves_relative_alias_import(tmp_path: Path) -
     source = pkg / "app.py"
     source.write_text("from . import sibling\n")
 
-    modules = parse_imports_for_file(source.read_text(), source, tmp_path)
+    modules = parse_imports_for_file(source, tmp_path)
 
     assert modules == {"mypkg.sibling"}
 
