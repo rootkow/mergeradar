@@ -72,7 +72,7 @@ class LockfileOnlyRule(SimpleRule):
 
         for cf in context.changed_files:
             filename = PurePosixPath(cf.path).name.lower()
-            if filename not in NORMALIZED_LOCKFILE_FILENAMES:
+            if cf.status == "D" or filename not in NORMALIZED_LOCKFILE_FILENAMES:
                 return None
 
         return self.trigger("Only lockfile changes detected.")

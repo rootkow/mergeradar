@@ -142,6 +142,17 @@ def test_parse_imports_for_file_resolves_relative_alias_import(tmp_path: Path) -
     assert modules == {"mypkg.sibling"}
 
 
+def test_parse_imports_for_file_rereads_changed_content(tmp_path: Path) -> None:
+    source = tmp_path / "app.py"
+    source.write_text("import alpha\n")
+
+    assert parse_imports_for_file(source, tmp_path) == {"alpha"}
+
+    source.write_text("import beta\n")
+
+    assert parse_imports_for_file(source, tmp_path) == {"beta"}
+
+
 def test_resolve_imports_multiple_candidates(tmp_path: Path) -> None:
     (tmp_path / "alpha.py").touch()
     (tmp_path / "beta.py").touch()

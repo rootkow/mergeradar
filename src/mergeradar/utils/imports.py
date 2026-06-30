@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ast
-import functools
 import sys
 from pathlib import Path
 
@@ -77,7 +76,6 @@ def parse_imports(content: str) -> set[str]:
     return modules
 
 
-@functools.cache
 def parse_imports_for_file(file_path: Path, repo_path: Path) -> set[str]:
     """Return imports from source, including relative imports resolved for a file."""
 
