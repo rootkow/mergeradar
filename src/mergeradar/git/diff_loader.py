@@ -50,7 +50,10 @@ def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
         Changed files with statuses and line counts.
     """
 
-    content = diff_file.read_text(encoding="utf-8")
+    try:
+        content = diff_file.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise DiffLoaderError(f"Could not read diff file '{diff_file}': {exc}") from exc
     files: list[ChangedFile] = []
     current_path: str | None = None
     old_path: str | None = None

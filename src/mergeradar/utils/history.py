@@ -43,6 +43,8 @@ def load_history(path: Path) -> list[HistoryEntry]:
         return []
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as e:
+        raise ValueError(f"Could not read history file '{path}': {e}") from e
     except json.JSONDecodeError as e:
         raise ValueError(
             f"History file '{path}' is not valid JSON: {e}"
@@ -79,9 +81,12 @@ def append_history(path: Path, score: int, risk_level: str, commit: str = "") ->
 
     # keep only the 20 most recent entries
     entries = entries[-20:]
-    path.write_text(
-        json.dumps([e.to_dict() for e in entries], indent=2), encoding="utf-8"
-    )
+    try:
+        path.write_text(
+            json.dumps([e.to_dict() for e in entries], indent=2), encoding="utf-8"
+        )
+    except OSError as e:
+        raise ValueError(f"Could not write history file '{path}': {e}") from e
 
 
 def compute_trend(current_score: int, previous_score: int | None) -> str:

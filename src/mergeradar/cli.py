@@ -116,26 +116,26 @@ def analyze(
         if history_file is not None:
             try:
                 prev = load_history(history_file)
+                previous_score = prev[-1].score if prev else None
+                trend = compute_trend(report.score, previous_score)
+                report.metadata["risk_trend"] = trend
+                commit = ""
+                if not diff_file:
+                    try:
+                        result = subprocess.run(
+                            ["git", "-C", str(repo), "rev-parse", "--short", "HEAD"],
+                            capture_output=True, text=True, timeout=10, check=True,
+                        )
+                        commit = result.stdout.strip()
+                    except (subprocess.CalledProcessError, FileNotFoundError, OSError) as exc:
+                        if verbose:
+                            console.print(
+                                f"[yellow]Warning: could not determine commit hash: {exc}[/yellow]"
+                            )
+                append_history(history_file, report.score, report.risk_level, commit)
             except ValueError as e:
                 console.print(f"[red]Error: {e}[/red]")
                 raise typer.Exit(code=1) from e
-            previous_score = prev[-1].score if prev else None
-            trend = compute_trend(report.score, previous_score)
-            report.metadata["risk_trend"] = trend
-            commit = ""
-            if not diff_file:
-                try:
-                    result = subprocess.run(
-                        ["git", "-C", str(repo), "rev-parse", "--short", "HEAD"],
-                        capture_output=True, text=True, timeout=10, check=True,
-                    )
-                    commit = result.stdout.strip()
-                except (subprocess.CalledProcessError, FileNotFoundError, OSError) as exc:
-                    if verbose:
-                        console.print(
-                            f"[yellow]Warning: could not determine commit hash: {exc}[/yellow]"
-                        )
-            append_history(history_file, report.score, report.risk_level, commit)
 
         if output_format == "markdown":
             rendered = render_markdown(report, config=cfg)
@@ -147,7 +147,11 @@ def analyze(
             rendered = json.dumps(report.to_dict(), indent=2, sort_keys=True)
 
         if output is not None:
-            output.write_text(rendered, encoding="utf-8")
+            try:
+                output.write_text(rendered, encoding="utf-8")
+            except OSError as exc:
+                console.print(f"[red]Failed to write output file '{output}':[/red] {exc}")
+                raise typer.Exit(code=1) from exc
             typer.echo(f"Wrote report to {output}", err=True)
 
         typer.echo(rendered)

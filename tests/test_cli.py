@@ -207,6 +207,43 @@ def test_output_file_writes_json(tmp_path: Path) -> None:
     assert report["risk_level"] == "Low"
 
 
+def test_missing_diff_file_reported_without_traceback(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "analyze",
+            "--diff-file",
+            str(tmp_path / "missing.diff"),
+            "--format",
+            "json",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Failed to load diff" in result.stdout
+    assert "Could not read diff file" in result.stdout
+    assert "Traceback" not in result.stdout
+
+
+def test_output_file_write_error_reported_without_traceback(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "analyze",
+            "--diff-file",
+            "samples/docs-only.diff",
+            "--format",
+            "markdown",
+            "--output",
+            str(tmp_path / "missing-dir" / "report.md"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Failed to write output file" in result.stdout
+    assert "Traceback" not in result.stdout
+
+
 def test_sarif_format_is_valid_sarif() -> None:
     result = runner.invoke(
         app, ["analyze", "--diff-file", "samples/auth-change.diff", "--format", "sarif"]
@@ -261,6 +298,48 @@ def test_history_flag_writes_history_file(tmp_path: Path) -> None:
     assert len(data) == 1
     assert data[0]["score"] == 8
     assert data[0]["risk_level"] == "High"
+
+
+def test_history_file_read_error_reported_without_traceback(tmp_path: Path) -> None:
+    # A directory where a file is expected triggers IsADirectoryError on read
+    history_dir = tmp_path / "history.json"
+    history_dir.mkdir()
+
+    result = runner.invoke(
+        app,
+        [
+            "analyze",
+            "--diff-file",
+            "samples/auth-change.diff",
+            "--format",
+            "json",
+            "--history",
+            str(history_dir),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Could not read history file" in result.stdout
+    assert "Traceback" not in result.stdout
+
+
+def test_history_file_write_error_reported_without_traceback(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "analyze",
+            "--diff-file",
+            "samples/auth-change.diff",
+            "--format",
+            "json",
+            "--history",
+            str(tmp_path / "missing-dir" / "history.json"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Could not write history file" in result.stdout
+    assert "Traceback" not in result.stdout
 
 
 def test_history_flag_appends_subsequent_runs(tmp_path: Path) -> None:
