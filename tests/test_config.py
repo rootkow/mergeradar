@@ -95,6 +95,11 @@ def test_parse_risky_categories_rejects_non_list() -> None:
         _parse_config({"risky_categories": "auth"})
 
 
+def test_parse_headings_as_non_dict_raises() -> None:
+    with pytest.raises(ConfigError, match="headings.*table"):
+        _parse_config({"headings": "not-a-table"})
+
+
 def test_parse_custom_rule_requires_reason() -> None:
     with pytest.raises(ConfigError, match="reason must be a string"):
         _parse_config(

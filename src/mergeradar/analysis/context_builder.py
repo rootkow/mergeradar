@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from mergeradar.config import MergeRadarConfig
+from mergeradar.config import DEFAULT_RISKY_CATEGORIES, MergeRadarConfig
 from mergeradar.models import AnalysisContext, ChangedFile
 
 
@@ -20,9 +20,7 @@ def build_context(
     }
 
     risky_categories = (
-        config.risky_categories
-        if config is not None
-        else {"database", "auth", "infra", "config", "api", "deps"}
+        config.risky_categories if config is not None else DEFAULT_RISKY_CATEGORIES
     )
     return AnalysisContext(
         repo_path=repo_path,

@@ -7,6 +7,10 @@ from typing import Any
 
 from mergeradar.exceptions import ConfigError
 
+DEFAULT_RISKY_CATEGORIES: frozenset[str] = frozenset(
+    {"database", "auth", "infra", "config", "api", "deps"}
+)
+
 
 @dataclass(slots=True)
 class RuleOverride:
@@ -28,7 +32,7 @@ class MergeRadarConfig:
     keywords: dict[str, list[str]] = field(default_factory=dict)
     rule_overrides: dict[str, RuleOverride] = field(default_factory=dict)
     risky_categories: set[str] = field(
-        default_factory=lambda: {"database", "auth", "infra", "config", "api", "deps"}
+        default_factory=lambda: set(DEFAULT_RISKY_CATEGORIES)
     )
     category_headings: dict[str, str] = field(default_factory=dict)
     custom_rules: list[CustomRuleDef] = field(default_factory=list)
@@ -62,12 +66,12 @@ def _parse_required_str_list(raw: object, key: str) -> set[str]:
     return {str(item) for item in raw}
 
 
-def _parse_str_dict(raw: object) -> dict[str, str]:
-    """Convert a TOML table to a dict of strings. Returns empty dict for non-dict input."""
+def _parse_str_dict(raw: object, key: str = "headings") -> dict[str, str]:
+    """Convert a TOML table to a dict of strings. Raises ConfigError for non-dict input."""
 
-    if isinstance(raw, dict):
-        return {str(k): str(v) for k, v in raw.items()}
-    return {}
+    if not isinstance(raw, dict):
+        raise ConfigError(f"'{key}' must be a table (key-value pairs).")
+    return {str(k): str(v) for k, v in raw.items()}
 
 
 def _parse_config(data: dict[str, Any]) -> MergeRadarConfig:
@@ -131,6 +135,8 @@ def _parse_config(data: dict[str, Any]) -> MergeRadarConfig:
             if "risky_categories" in data
             else {"database", "auth", "infra", "config", "api", "deps"}
         ),
-        category_headings=_parse_str_dict(data.get("headings")),
+        category_headings=(
+            _parse_str_dict(data["headings"], "headings") if "headings" in data else {}
+        ),
         custom_rules=custom_rules,
     )

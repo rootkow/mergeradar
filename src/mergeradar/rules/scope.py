@@ -67,13 +67,18 @@ class LockfileOnlyRule(SimpleRule):
     def evaluate(self, context: AnalysisContext) -> TriggeredRule | None:
         """Return a stabilizing result for lockfile-only changes."""
 
-        if not context.changed_files:
-            return None
-
+        has_lockfile_change = False
+        has_non_lockfile_change = False
         for cf in context.changed_files:
             filename = PurePosixPath(cf.path).name.lower()
-            if cf.status == "D" or filename not in NORMALIZED_LOCKFILE_FILENAMES:
-                return None
+            if filename in NORMALIZED_LOCKFILE_FILENAMES:
+                if cf.status != "D":
+                    has_lockfile_change = True
+            else:
+                has_non_lockfile_change = True
+
+        if not has_lockfile_change or has_non_lockfile_change:
+            return None
 
         return self.trigger("Only lockfile changes detected.")
 
