@@ -57,6 +57,17 @@ def test_env_var_check_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.exit_code == 5
 
 
+def test_env_var_check_invalid_warns(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MERGERADAR_CHECK", "not-a-number")
+    result = runner.invoke(
+        app, ["analyze", "--diff-file", "samples/auth-change.diff", "--format", "json"]
+    )
+
+    assert result.exit_code == 0
+    assert "Warning" in result.stderr
+    assert "not-a-number" in result.stderr
+
+
 def test_env_var_check_overridden_by_cli(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MERGERADAR_CHECK", "8")
     result = runner.invoke(

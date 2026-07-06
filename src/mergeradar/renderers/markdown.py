@@ -37,8 +37,8 @@ def render_markdown(report: RiskReport, config: MergeRadarConfig | None = None) 
         for rule in report.triggered_rules:
             lines.append(f"- **[{rule.score:+d}] {rule.title}**")
             if rule.paths:
-                reason_prefix = rule.reason.split(": ", 1)[0]
-                lines.append(f"  - {reason_prefix}:")
+                reason_text = rule.reason.split(": ", 1)[0] if ": " in rule.reason else rule.reason
+                lines.append(f"  - {reason_text}:")
                 for path in rule.paths:
                     lines.append(f"    - `{path}`")
             else:

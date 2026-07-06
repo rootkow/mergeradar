@@ -53,13 +53,13 @@ def _add_if_resolvable_module(modules: set[str], module_name: str, repo_path: Pa
         modules.add(module_name)
 
 
-def parse_imports(content: str) -> set[str]:
-    """Return the set of absolute module names imported in Python source."""
-
-    try:
-        tree = ast.parse(content)
-    except SyntaxError:
-        return set()
+def _extract_absolute_imports(
+    tree: ast.AST,
+    *,
+    filter_resolvable: bool = False,
+    repo_path: Path | None = None,
+) -> set[str]:
+    """Extract absolute (level=0) imports from a parsed AST."""
 
     modules: set[str] = set()
     for node in ast.walk(tree):
@@ -71,9 +71,22 @@ def parse_imports(content: str) -> set[str]:
                 modules.add(node.module)
                 for alias in node.names:
                     if alias.name != "*":
-                        modules.add(f"{node.module}.{alias.name}")
-
+                        full = f"{node.module}.{alias.name}"
+                        if filter_resolvable and repo_path is not None:
+                            _add_if_resolvable_module(modules, full, repo_path)
+                        else:
+                            modules.add(full)
     return modules
+
+
+def parse_imports(content: str) -> set[str]:
+    """Return the set of absolute module names imported in Python source."""
+
+    try:
+        tree = ast.parse(content)
+    except SyntaxError:
+        return set()
+    return _extract_absolute_imports(tree)
 
 
 def parse_imports_for_file(file_path: Path, repo_path: Path) -> set[str]:
@@ -89,32 +102,24 @@ def parse_imports_for_file(file_path: Path, repo_path: Path) -> set[str]:
     except SyntaxError:
         return set()
 
-    modules: set[str] = set()
+    modules = _extract_absolute_imports(tree, filter_resolvable=True, repo_path=repo_path)
+
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                modules.add(alias.name)
-        elif isinstance(node, ast.ImportFrom):
-            if node.level == 0 and node.module is not None:
-                modules.add(node.module)
+        if isinstance(node, ast.ImportFrom) and node.level > 0:
+            base = _relative_import_base(node, file_path, repo_path)
+            if base is None:
+                continue
+            if node.module:
+                modules.add(f"{base}.{node.module}")
                 for alias in node.names:
                     if alias.name != "*":
-                        _add_if_resolvable_module(modules, f"{node.module}.{alias.name}", repo_path)
-            elif node.level > 0:
-                base = _relative_import_base(node, file_path, repo_path)
-                if base is None:
-                    continue
-                if node.module:
-                    modules.add(f"{base}.{node.module}")
-                    for alias in node.names:
-                        if alias.name != "*":
-                            _add_if_resolvable_module(
-                                modules, f"{base}.{node.module}.{alias.name}", repo_path
-                            )
-                else:
-                    for alias in node.names:
-                        if alias.name != "*":
-                            modules.add(f"{base}.{alias.name}")
+                        _add_if_resolvable_module(
+                            modules, f"{base}.{node.module}.{alias.name}", repo_path
+                        )
+            else:
+                for alias in node.names:
+                    if alias.name != "*":
+                        modules.add(f"{base}.{alias.name}")
 
     return modules
 

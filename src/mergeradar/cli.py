@@ -189,6 +189,10 @@ def _env_check() -> int | None:
     try:
         return int(val)
     except ValueError:
+        typer.echo(
+            f"Warning: MERGERADAR_CHECK='{val}' is not a valid integer, ignoring.",
+            err=True,
+        )
         return None
 
 

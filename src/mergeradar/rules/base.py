@@ -69,5 +69,4 @@ class CategoryChangedRule(SimpleRule):
         if not paths:
             return None
 
-        shown_paths = paths[:3]
-        return self.trigger(f"{self.reason_prefix}: {', '.join(shown_paths)}", paths=shown_paths)
+        return self.trigger(f"{self.reason_prefix}: {', '.join(paths)}", paths=paths)

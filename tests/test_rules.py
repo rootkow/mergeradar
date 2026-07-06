@@ -89,6 +89,56 @@ def test_deleted_lockfile_does_not_reduce_risk() -> None:
     assert not any(rule.id == "stability.lockfile_only" for rule in report.triggered_rules)
 
 
+def test_lockfile_modify_and_delete_triggers_rule() -> None:
+    changed_files = enrich_changed_files(
+        [
+            ChangedFile(
+                path="package-lock.json",
+                old_path=None,
+                status="M",
+                additions=10,
+                deletions=5,
+            ),
+            ChangedFile(
+                path="yarn.lock",
+                old_path="yarn.lock",
+                status="D",
+                additions=0,
+                deletions=100,
+            ),
+        ]
+    )
+    context = build_context(repo_path=".", changed_files=changed_files)
+    report = score_context(context)
+
+    assert any(rule.id == "stability.lockfile_only" for rule in report.triggered_rules)
+
+
+def test_lockfile_modify_and_non_lockfile_delete_does_not_trigger_rule() -> None:
+    changed_files = enrich_changed_files(
+        [
+            ChangedFile(
+                path="package-lock.json",
+                old_path=None,
+                status="M",
+                additions=10,
+                deletions=5,
+            ),
+            ChangedFile(
+                path="src/app.py",
+                old_path="src/app.py",
+                status="D",
+                additions=0,
+                deletions=20,
+            ),
+        ]
+    )
+    context = build_context(repo_path=".", changed_files=changed_files)
+    report = score_context(context)
+
+    assert not any(rule.id == "stability.lockfile_only" for rule in report.triggered_rules)
+
+
 def test_docs_only_change_reduces_risk() -> None:
     changed_files = enrich_changed_files(
         [
