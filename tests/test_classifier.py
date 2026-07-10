@@ -82,6 +82,14 @@ def test_classify_docs_path() -> None:
     assert reason
 
 
+def test_migration_named_tests_and_docs_keep_their_evidence_categories() -> None:
+    test_category, _ = classify_file("tests/test_migrations.py")
+    docs_category, _ = classify_file("docs/migrations.md")
+
+    assert test_category == "tests"
+    assert docs_category == "docs"
+
+
 def test_classify_infra_path() -> None:
     category, reason = classify_file(".github/workflows/deploy.yml")
     assert category == "infra"

@@ -50,14 +50,14 @@ def classify_file(path: str, config: MergeRadarConfig | None = None) -> tuple[st
     parts = normalized_parts(path)
     filename = parts[-1] if parts else ""
     suffix = PurePosixPath(filename).suffix.lower()
-    if _matches_path_keyword(path, keyword_map["database"]):
-        return ("database", "path contains migration-related keyword")
-
     if "docs" in parts or suffix in DOC_EXTENSIONS or filename.lower() == "readme.md":
         return ("docs", "documentation file matched by path or extension")
 
     if _matches_path_keyword(path, keyword_map["tests"]):
         return ("tests", "path contains test-related keyword")
+
+    if _matches_path_keyword(path, keyword_map["database"]):
+        return ("database", "path contains migration-related keyword")
 
     if filename in NORMALIZED_INFRA_FILENAMES or _matches_path_keyword(path, keyword_map["infra"]):
         return ("infra", "infrastructure or deployment file matched")
