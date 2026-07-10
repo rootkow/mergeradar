@@ -86,7 +86,7 @@ def analyze(
                 raise typer.Exit(code=3)
             changed_files = load_changed_files(repo_path=repo, base=base, head=head)
             repo_label = str(repo.resolve())
-            allow_filesystem_analysis = True
+            allow_filesystem_analysis = base is None and head is None
 
         try:
             cfg = load_config(path=config, repo_path=repo)

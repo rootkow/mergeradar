@@ -5,8 +5,47 @@ import pytest
 from typer.testing import CliRunner
 
 from mergeradar.cli import app
+from mergeradar.models import ChangedFile
 
 runner = CliRunner()
+
+
+def test_explicit_ref_comparison_does_not_analyze_checked_out_files(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    captured: dict[str, bool] = {}
+
+    monkeypatch.setattr("mergeradar.cli.is_git_repo", lambda repo: True)
+    monkeypatch.setattr(
+        "mergeradar.cli.load_changed_files",
+        lambda **kwargs: [ChangedFile("app.py", None, "M", 1, 0)],
+    )
+
+    from mergeradar.cli import build_context as real_build_context
+
+    def capture_build_context(**kwargs):
+        captured["allow_filesystem_analysis"] = kwargs["allow_filesystem_analysis"]
+        return real_build_context(**kwargs)
+
+    monkeypatch.setattr("mergeradar.cli.build_context", capture_build_context)
+
+    result = runner.invoke(
+        app,
+        [
+            "analyze",
+            "--repo",
+            str(tmp_path),
+            "--base",
+            "main",
+            "--head",
+            "feature",
+            "--format",
+            "json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured["allow_filesystem_analysis"] is False
 
 
 def test_json_stdout_is_machine_readable() -> None:
