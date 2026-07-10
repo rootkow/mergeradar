@@ -24,11 +24,26 @@ class HistoryEntry:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> HistoryEntry:
+        score = data["score"]
+        risk_level = data["risk_level"]
+        commit = data.get("commit", "")
+        timestamp = data.get("timestamp", "")
+
+        if not isinstance(score, int) or isinstance(score, bool):
+            raise TypeError("'score' must be an integer")
+        for key, value in {
+            "risk_level": risk_level,
+            "commit": commit,
+            "timestamp": timestamp,
+        }.items():
+            if not isinstance(value, str):
+                raise TypeError(f"'{key}' must be a string")
+
         return cls(
-            score=data["score"],
-            risk_level=data["risk_level"],
-            commit=data.get("commit", ""),
-            timestamp=data.get("timestamp", ""),
+            score=score,
+            risk_level=risk_level,
+            commit=commit,
+            timestamp=timestamp,
         )
 
 
@@ -61,7 +76,7 @@ def load_history(path: Path) -> list[HistoryEntry]:
             entries.append(HistoryEntry.from_dict(entry))
         except (KeyError, TypeError) as e:
             raise ValueError(
-                f"History file '{path}', entry {i} has invalid schema: missing key {e}"
+                f"History file '{path}', entry {i} has invalid schema: {e}"
             ) from e
     return entries
 

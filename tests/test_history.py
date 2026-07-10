@@ -70,6 +70,24 @@ def test_load_history_raises_on_invalid_schema(tmp_path: Path) -> None:
         load_history(f)
 
 
+@pytest.mark.parametrize(
+    "entry",
+    [
+        {"score": "5", "risk_level": "Medium"},
+        {"score": True, "risk_level": "Medium"},
+        {"score": 5, "risk_level": 2},
+        {"score": 5, "risk_level": "Medium", "commit": None},
+        {"score": 5, "risk_level": "Medium", "timestamp": 123},
+    ],
+)
+def test_load_history_rejects_invalid_field_types(tmp_path: Path, entry: dict) -> None:
+    f = tmp_path / "history.json"
+    f.write_text(json.dumps([entry]))
+
+    with pytest.raises(ValueError, match="invalid schema"):
+        load_history(f)
+
+
 def test_append_and_load_history(tmp_path: Path) -> None:
     f = tmp_path / "history.json"
     append_history(f, score=5, risk_level="Medium", commit="abc")
