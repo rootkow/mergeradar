@@ -67,15 +67,15 @@ def classify_file(path: str, config: MergeRadarConfig | None = None) -> tuple[st
     ):
         return ("deps", "dependency or package manifest file matched")
 
+    if _matches_path_keyword(path, keyword_map["api"]):
+        return ("api", "path contains API-related keyword")
+
     if suffix in CONFIG_EXTENSIONS or _matches_path_keyword(path, keyword_map["config"]):
         return ("config", "configuration file matched by extension or keyword")
 
     if suffix in CODE_EXTENSIONS:
         if _matches_path_keyword(path, keyword_map["auth"]):
             return ("auth", "path contains auth-related keyword")
-
-        if _matches_path_keyword(path, keyword_map["api"]):
-            return ("api", "path contains API-related keyword")
 
         return ("app", "application source code file")
 

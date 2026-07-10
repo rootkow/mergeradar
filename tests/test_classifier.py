@@ -123,6 +123,14 @@ def test_filename_tokens_trigger_categories() -> None:
     assert reason
 
 
+def test_openapi_and_swagger_specs_are_classified_as_api() -> None:
+    openapi_category, _ = classify_file("openapi.yaml")
+    swagger_category, _ = classify_file("swagger.json")
+
+    assert openapi_category == "api"
+    assert swagger_category == "api"
+
+
 def test_classify_dependency_paths() -> None:
     category, reason = classify_file("requirements.txt")
     assert category == "deps"
