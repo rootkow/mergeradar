@@ -17,8 +17,8 @@ def test_head_requires_base() -> None:
 
 def test_rename_keeps_numstat_churn() -> None:
     changed_files = _merge_name_status_and_numstat(
-        "R050\tapp/old.py\tapp/new.py\n",
-        "5\t2\tapp/{old.py => new.py}\n",
+        b"R050\0app/old.py\0app/new.py\0",
+        b"5\t2\t\0app/old.py\0app/new.py\0",
     )
 
     assert len(changed_files) == 1
@@ -27,6 +27,20 @@ def test_rename_keeps_numstat_churn() -> None:
     assert changed_files[0].status == "R"
     assert changed_files[0].additions == 5
     assert changed_files[0].deletions == 2
+
+
+def test_nul_delimited_git_output_preserves_unusual_filename_characters() -> None:
+    path = "src/caf\N{LATIN SMALL LETTER E WITH ACUTE}\tmodule\nname.py"
+    encoded_path = path.encode()
+
+    changed_files = _merge_name_status_and_numstat(
+        b"M\0" + encoded_path + b"\0",
+        b"3\t1\t" + encoded_path + b"\0",
+    )
+
+    assert changed_files[0].path == path
+    assert changed_files[0].additions == 3
+    assert changed_files[0].deletions == 1
 
 
 @pytest.mark.parametrize(

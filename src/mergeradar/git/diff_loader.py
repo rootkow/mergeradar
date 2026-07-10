@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -9,7 +10,6 @@ from mergeradar.models import ChangedFile
 
 DIFF_HEADER_RE = re.compile(r"^diff --git a/(.+?) b/(.+)$")
 HUNK_RE = re.compile(r"^@@ .+ @@")
-BRACED_RENAME_RE = re.compile(r"^(.*)\{.* => (.*)\}(.*)$")
 
 
 def load_changed_files(
@@ -32,8 +32,10 @@ def load_changed_files(
     """
 
     spec = _build_spec(base=base, head=head)
-    name_status_output = _run_git_diff(repo_path, ["--find-renames", "--name-status", spec])
-    numstat_output = _run_git_diff(repo_path, ["--find-renames", "--numstat", spec])
+    name_status_output = _run_git_diff(
+        repo_path, ["--find-renames", "--name-status", "-z", spec]
+    )
+    numstat_output = _run_git_diff(repo_path, ["--find-renames", "--numstat", "-z", spec])
     return _merge_name_status_and_numstat(name_status_output, numstat_output)
 
 
@@ -157,52 +159,71 @@ def _build_spec(base: str | None, head: str | None) -> str:
     return "HEAD"
 
 
-def _run_git_diff(repo_path: Path, args: list[str]) -> str:
+def _run_git_diff(repo_path: Path, args: list[str]) -> bytes:
     """Run `git diff` in a repository and return its standard output."""
 
     command = ["git", "-C", str(repo_path), "diff", *args]
-    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    result = subprocess.run(command, capture_output=True, check=False)
     if result.returncode != 0:
-        stderr = result.stderr.strip() or "unknown git diff error"
+        stderr = os.fsdecode(result.stderr).strip() or "unknown git diff error"
         raise DiffLoaderError(stderr)
 
     return result.stdout
 
 
 def _merge_name_status_and_numstat(
-    name_status_output: str,
-    numstat_output: str,
+    name_status_output: bytes,
+    numstat_output: bytes,
 ) -> list[ChangedFile]:
     """Combine Git status and line-count output into changed-file records."""
 
     numstat_map: dict[str, tuple[int, int]] = {}
-    for line in numstat_output.splitlines():
-        if not line.strip():
+    numstat_fields = numstat_output.split(b"\0")
+    field_index = 0
+    while field_index < len(numstat_fields):
+        record = numstat_fields[field_index]
+        field_index += 1
+        if not record:
             continue
 
-        parts = line.split("\t")
-        if len(parts) < 3:
+        parts = record.split(b"\t", maxsplit=2)
+        if len(parts) != 3:
             continue
 
-        additions_raw, deletions_raw, path = parts[0], parts[1], parts[-1]
+        additions_raw, deletions_raw, raw_path = parts
+        if not raw_path:
+            if field_index + 1 >= len(numstat_fields):
+                continue
+            field_index += 1  # Skip the rename source path.
+            raw_path = numstat_fields[field_index]
+            field_index += 1
+
+        path = os.fsdecode(raw_path)
         additions = int(additions_raw) if additions_raw.isdigit() else 0
         deletions = int(deletions_raw) if deletions_raw.isdigit() else 0
-        numstat_map[_rename_destination(path)] = (additions, deletions)
+        numstat_map[path] = (additions, deletions)
 
     changed_files: list[ChangedFile] = []
-    for line in name_status_output.splitlines():
-        if not line.strip():
+    name_status_fields = name_status_output.split(b"\0")
+    field_index = 0
+    while field_index < len(name_status_fields):
+        raw_status = name_status_fields[field_index]
+        field_index += 1
+        if not raw_status:
             continue
 
-        parts = line.split("\t")
-        status = parts[0]
+        status = os.fsdecode(raw_status)
         old_path: str | None = None
-        path = ""
-        if status.startswith("R") and len(parts) >= 3:
-            old_path, path = parts[1], parts[2]
-            status = "R"
-        elif len(parts) >= 2:
-            path = parts[1]
+        if status.startswith(("R", "C")):
+            if field_index + 1 >= len(name_status_fields):
+                continue
+            old_path = os.fsdecode(name_status_fields[field_index])
+            path = os.fsdecode(name_status_fields[field_index + 1])
+            field_index += 2
+            status = status[0]
+        elif field_index < len(name_status_fields):
+            path = os.fsdecode(name_status_fields[field_index])
+            field_index += 1
         else:
             continue
 
@@ -222,17 +243,3 @@ def _merge_name_status_and_numstat(
         raise DiffLoaderError("No file changes found. Is your diff empty?")
 
     return changed_files
-
-
-def _rename_destination(path: str) -> str:
-    """Extract the destination from Git's compact rename notation."""
-
-    braced_match = BRACED_RENAME_RE.match(path)
-    if braced_match:
-        prefix, destination, suffix = braced_match.groups()
-        return f"{prefix}{destination}{suffix}"
-
-    if " => " in path:
-        return path.rsplit(" => ", maxsplit=1)[1]
-
-    return path
