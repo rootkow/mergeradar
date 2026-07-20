@@ -148,3 +148,21 @@ def test_saved_git_diff_decodes_quoted_path(tmp_path: Path) -> None:
     assert changed_files[0].old_path == "auth/café\tservice.py"
     assert changed_files[0].additions == 1
     assert changed_files[0].deletions == 1
+
+
+def test_saved_diff_tolerates_non_utf8_file_content(tmp_path: Path) -> None:
+    diff_file = tmp_path / "change.diff"
+    diff_file.write_bytes(
+        b"diff --git a/app/file.txt b/app/file.txt\n"
+        b"--- a/app/file.txt\n"
+        b"+++ b/app/file.txt\n"
+        b"@@ -1 +1 @@\n"
+        b"-old\n"
+        b"+new-\xff\n"
+    )
+
+    changed_files = load_changed_files_from_diff_file(diff_file)
+
+    assert changed_files[0].path == "app/file.txt"
+    assert changed_files[0].additions == 1
+    assert changed_files[0].deletions == 1
