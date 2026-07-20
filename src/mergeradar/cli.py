@@ -30,6 +30,7 @@ from mergeradar.utils.history import append_history, compute_trend, load_history
 
 app = typer.Typer(help="Blast-radius and risk analysis for pull requests.")
 console = Console()
+MACHINE_READABLE_FORMATS = {"json", "sarif"}
 
 
 @app.callback()
@@ -113,6 +114,8 @@ def analyze(
             )
             raise typer.Exit(code=2)
 
+        verbose_console = Console(stderr=output_format in MACHINE_READABLE_FORMATS)
+
         if history_file is not None:
             try:
                 prev = load_history(history_file)
@@ -129,7 +132,7 @@ def analyze(
                         commit = result.stdout.strip()
                     except (subprocess.CalledProcessError, FileNotFoundError, OSError) as exc:
                         if verbose:
-                            console.print(
+                            verbose_console.print(
                                 f"[yellow]Warning: could not determine commit hash: {exc}[/yellow]"
                             )
                 append_history(history_file, report.score, report.risk_level, commit)
@@ -157,7 +160,7 @@ def analyze(
         typer.echo(rendered)
 
         if verbose:
-            console.print(
+            verbose_console.print(
                 Panel.fit(
                     f"Repo: {repo_label}\n"
                     f"Files changed: {context.total_files_changed}\n"
@@ -170,7 +173,7 @@ def analyze(
             table = Table("File", "Status", "Category", "Reason")
             for cf in changed_files:
                 table.add_row(cf.path, cf.status, cf.category, cf.classification_reason or "")
-            console.print(table)
+            verbose_console.print(table)
 
         threshold = check if check is not None else _env_check()
         if threshold is not None and report.score >= threshold:

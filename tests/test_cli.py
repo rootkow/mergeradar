@@ -58,6 +58,25 @@ def test_json_stdout_is_machine_readable() -> None:
     assert report["risk_level"] == "High"
 
 
+def test_verbose_json_keeps_stdout_machine_readable() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "analyze",
+            "--diff-file",
+            "samples/docs-only.diff",
+            "--format",
+            "json",
+            "--verbose",
+        ],
+    )
+
+    assert result.exit_code == 0
+    report = json.loads(result.stdout)
+    assert report["risk_level"] == "Low"
+    assert "MergeRadar Debug" in result.stderr
+
+
 def test_head_without_base_is_rejected() -> None:
     result = runner.invoke(app, ["analyze", "--head", "HEAD"])
 
