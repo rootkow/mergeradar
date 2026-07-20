@@ -56,6 +56,10 @@ def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
         content = diff_file.read_text(encoding="utf-8")
     except OSError as exc:
         raise DiffLoaderError(f"Could not read diff file '{diff_file}': {exc}") from exc
+
+    if not any(line.startswith("diff --git ") for line in content.splitlines()):
+        return _parse_plain_unified_diff(content, diff_file)
+
     files: list[ChangedFile] = []
     current_path: str | None = None
     old_path: str | None = None
@@ -124,6 +128,69 @@ def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
         raise DiffLoaderError(f"No parseable file changes found in diff file: {diff_file}")
 
     return files
+
+
+def _parse_plain_unified_diff(content: str, diff_file: Path) -> list[ChangedFile]:
+    """Parse a unified diff that does not contain Git ``diff --git`` headers."""
+
+    files: list[ChangedFile] = []
+    old_path: str | None = None
+    current_path: str | None = None
+    additions = 0
+    deletions = 0
+    status = "M"
+    in_hunk = False
+
+    for raw_line in content.splitlines():
+        if raw_line.startswith("--- "):
+            if current_path is not None:
+                files.append(
+                    _build_changed_file(current_path, old_path, status, additions, deletions)
+                )
+            raw_old_path = _unified_header_path(raw_line, "--- ")
+            old_path = None if raw_old_path == "/dev/null" else raw_old_path
+            current_path = old_path
+            additions = 0
+            deletions = 0
+            status = "A" if old_path is None else "M"
+            in_hunk = False
+            continue
+
+        if raw_line.startswith("+++ ") and (old_path is not None or status == "A"):
+            raw_new_path = _unified_header_path(raw_line, "+++ ")
+            if raw_new_path == "/dev/null":
+                status = "D"
+            else:
+                current_path = raw_new_path
+            continue
+
+        if HUNK_RE.match(raw_line):
+            in_hunk = True
+            continue
+
+        if not in_hunk:
+            continue
+        if raw_line.startswith("+"):
+            additions += 1
+        elif raw_line.startswith("-"):
+            deletions += 1
+
+    if current_path is not None:
+        files.append(_build_changed_file(current_path, old_path, status, additions, deletions))
+
+    if not files:
+        raise DiffLoaderError(f"No parseable file changes found in diff file: {diff_file}")
+
+    return files
+
+
+def _unified_header_path(line: str, prefix: str) -> str:
+    """Extract and normalize a path from a ``---`` or ``+++`` header."""
+
+    path = line.removeprefix(prefix).split("\t", 1)[0]
+    if path.startswith(("a/", "b/")):
+        return path[2:]
+    return path
 
 
 def _build_changed_file(

@@ -72,3 +72,55 @@ def test_saved_diff_detects_file_status(
     changed_files = load_changed_files_from_diff_file(diff_file)
 
     assert changed_files[0].status == expected_status
+
+
+def test_plain_unified_diff_without_git_headers_is_parsed(tmp_path: Path) -> None:
+    diff_file = tmp_path / "change.diff"
+    diff_file.write_text(
+        "\n".join(
+            [
+                "--- a/app/file.py",
+                "+++ b/app/file.py",
+                "@@ -1 +1,2 @@",
+                "-old",
+                "+new",
+                "+another",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    changed_files = load_changed_files_from_diff_file(diff_file)
+
+    assert len(changed_files) == 1
+    assert changed_files[0].path == "app/file.py"
+    assert changed_files[0].old_path == "app/file.py"
+    assert changed_files[0].status == "M"
+    assert changed_files[0].additions == 2
+    assert changed_files[0].deletions == 1
+
+
+def test_plain_unified_diff_parses_multiple_files_and_statuses(tmp_path: Path) -> None:
+    diff_file = tmp_path / "change.diff"
+    diff_file.write_text(
+        "\n".join(
+            [
+                "--- /dev/null",
+                "+++ b/app/new.py",
+                "@@ -0,0 +1 @@",
+                "+new",
+                "--- a/app/old.py",
+                "+++ /dev/null",
+                "@@ -1 +0,0 @@",
+                "-old",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    changed_files = load_changed_files_from_diff_file(diff_file)
+
+    assert [(item.path, item.status) for item in changed_files] == [
+        ("app/new.py", "A"),
+        ("app/old.py", "D"),
+    ]
