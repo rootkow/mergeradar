@@ -124,3 +124,27 @@ def test_plain_unified_diff_parses_multiple_files_and_statuses(tmp_path: Path) -
         ("app/new.py", "A"),
         ("app/old.py", "D"),
     ]
+
+
+def test_saved_git_diff_decodes_quoted_path(tmp_path: Path) -> None:
+    diff_file = tmp_path / "change.diff"
+    diff_file.write_text(
+        "\n".join(
+            [
+                r'diff --git "a/auth/caf\303\251\tservice.py" "b/auth/caf\303\251\tservice.py"',
+                r'--- "a/auth/caf\303\251\tservice.py"',
+                r'+++ "b/auth/caf\303\251\tservice.py"',
+                "@@ -1 +1 @@",
+                "-old",
+                "+new",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    changed_files = load_changed_files_from_diff_file(diff_file)
+
+    assert changed_files[0].path == "auth/café\tservice.py"
+    assert changed_files[0].old_path == "auth/café\tservice.py"
+    assert changed_files[0].additions == 1
+    assert changed_files[0].deletions == 1

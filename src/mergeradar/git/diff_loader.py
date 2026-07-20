@@ -8,8 +8,19 @@ from pathlib import Path
 from mergeradar.exceptions import DiffLoaderError
 from mergeradar.models import ChangedFile
 
-DIFF_HEADER_RE = re.compile(r"^diff --git a/(.+?) b/(.+)$")
+DIFF_HEADER_RE = re.compile(r'^diff --git ("(?:\\.|[^"\\])*"|\S+) ("(?:\\.|[^"\\])*"|\S+)$')
 HUNK_RE = re.compile(r"^@@ .+ @@")
+GIT_ESCAPE_BYTES = {
+    "a": b"\a",
+    "b": b"\b",
+    "t": b"\t",
+    "n": b"\n",
+    "v": b"\v",
+    "f": b"\f",
+    "r": b"\r",
+    '"': b'"',
+    "\\": b"\\",
+}
 
 
 def load_changed_files(
@@ -75,8 +86,8 @@ def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
                     _build_changed_file(current_path, old_path, status, additions, deletions)
                 )
 
-            old_path = header_match.group(1)
-            current_path = header_match.group(2)
+            old_path = _git_diff_path(header_match.group(1), "a/")
+            current_path = _git_diff_path(header_match.group(2), "b/")
             additions = 0
             deletions = 0
             status = "M"
@@ -91,12 +102,12 @@ def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
             continue
 
         if raw_line.startswith("rename from "):
-            old_path = raw_line.removeprefix("rename from ")
+            old_path = _decode_git_path(raw_line.removeprefix("rename from "))
             status = "R"
             continue
 
         if raw_line.startswith("rename to "):
-            current_path = raw_line.removeprefix("rename to ")
+            current_path = _decode_git_path(raw_line.removeprefix("rename to "))
             status = "R"
             continue
 
@@ -128,6 +139,49 @@ def load_changed_files_from_diff_file(diff_file: Path) -> list[ChangedFile]:
         raise DiffLoaderError(f"No parseable file changes found in diff file: {diff_file}")
 
     return files
+
+
+def _git_diff_path(raw_path: str, prefix: str) -> str:
+    """Decode a path from a Git diff header and remove its side prefix."""
+
+    path = _decode_git_path(raw_path)
+    return path.removeprefix(prefix)
+
+
+def _decode_git_path(raw_path: str) -> str:
+    """Decode Git's double-quoted, C-style path representation."""
+
+    if not (raw_path.startswith('"') and raw_path.endswith('"')):
+        return raw_path
+
+    value = raw_path[1:-1]
+    decoded = bytearray()
+    index = 0
+    while index < len(value):
+        char = value[index]
+        if char != "\\":
+            decoded.extend(char.encode("utf-8"))
+            index += 1
+            continue
+
+        index += 1
+        if index >= len(value):
+            decoded.extend(b"\\")
+            break
+
+        escape = value[index]
+        if escape in "01234567":
+            end = index + 1
+            while end < min(index + 3, len(value)) and value[end] in "01234567":
+                end += 1
+            decoded.append(int(value[index:end], 8))
+            index = end
+            continue
+
+        decoded.extend(GIT_ESCAPE_BYTES.get(escape, escape.encode("utf-8")))
+        index += 1
+
+    return os.fsdecode(bytes(decoded))
 
 
 def _parse_plain_unified_diff(content: str, diff_file: Path) -> list[ChangedFile]:
