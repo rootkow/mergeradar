@@ -70,6 +70,40 @@ def test_enrich_changed_files_with_config() -> None:
     assert files[0].category == "infra"
 
 
+def test_rename_preserves_risky_source_classification() -> None:
+    files = enrich_changed_files(
+        [
+            ChangedFile(
+                path="core/guard.py",
+                old_path="auth/guard.py",
+                status="R",
+                additions=0,
+                deletions=0,
+            )
+        ]
+    )
+
+    assert files[0].category == "auth"
+    assert files[0].classification_reason is not None
+    assert "renamed from auth/guard.py" in files[0].classification_reason
+
+
+def test_rename_prefers_risky_destination_classification() -> None:
+    files = enrich_changed_files(
+        [
+            ChangedFile(
+                path="auth/guard.py",
+                old_path="core/guard.py",
+                status="R",
+                additions=0,
+                deletions=0,
+            )
+        ]
+    )
+
+    assert files[0].category == "auth"
+
+
 def test_classify_auth_path() -> None:
     category, reason = classify_file("app/auth/service.py")
     assert category == "auth"

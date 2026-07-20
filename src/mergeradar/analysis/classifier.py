@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import PurePosixPath
 
-from mergeradar.config import MergeRadarConfig
+from mergeradar.config import DEFAULT_RISKY_CATEGORIES, MergeRadarConfig
 from mergeradar.models import ChangedFile
 from mergeradar.utils.patterns import (
     CODE_EXTENSIONS,
@@ -96,6 +96,13 @@ def enrich_changed_files(
 
     for changed_file in changed_files:
         category, reason = classify_file(changed_file.path, config=config)
+        if changed_file.status == "R" and changed_file.old_path is not None:
+            old_category, old_reason = classify_file(changed_file.old_path, config=config)
+            source_is_risky = old_category in DEFAULT_RISKY_CATEGORIES
+            destination_is_risky = category in DEFAULT_RISKY_CATEGORIES
+            if source_is_risky and not destination_is_risky:
+                category = old_category
+                reason = f"renamed from {changed_file.old_path}: {old_reason}"
         changed_file.category = category
         changed_file.classification_reason = reason
         changed_file.top_level_component = top_level_component(changed_file.path)
